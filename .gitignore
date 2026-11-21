@@ -1,0 +1,30 @@
+# dipendenze e build
+node_modules/
+dist/
+.next/
+.vercel/
+out/
+
+# segreti
+.env
+.env.*
+!.env.example
+
+# Python (engine/)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# file generati dal motore / Studio locale
+library/
+debug/
+*.zip
+
+# Capacitor: copie della build web dentro i progetti nativi
+app/ios/App/App/public/
+app/android/app/src/main/assets/public/
+
+# sistema
+.DS_Store
+Thumbs.db
