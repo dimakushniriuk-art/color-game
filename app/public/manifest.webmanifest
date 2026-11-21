@@ -1,0 +1,11 @@
+{
+  "name": "Color Game",
+  "short_name": "Color Game",
+  "description": "Colora con i numeri",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff8f1",
+  "theme_color": "#fff8f1",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
