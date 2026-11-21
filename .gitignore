@@ -28,3 +28,8 @@ app/android/app/src/main/assets/public/
 # sistema
 .DS_Store
 Thumbs.db
+
+# segreti dello Studio (Cloudflare/wrangler)
+.dev.vars
+.wrangler/
+_backup_telefono/

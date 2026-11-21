@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arte da colorare — Laboratorio</title>
+<style>
+  :root{--carta:#f6f1e7;--inchiostro:#1d1b18;--tenue:#6d665b;--linea:#d9cfbd;--accento:#b4462f;--accento2:#2f5d62;--card:#fffdf8;--ok:#2f6b3a;--err:#a12a1c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--carta);color:var(--inchiostro);font:15px/1.45 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--linea)}
+  h1{margin:0;font-size:26px;font-weight:600} h1 span{color:var(--accento);font-style:italic}
+  nav a{font-family:system-ui,sans-serif;font-size:13px;color:var(--accento2);margin-left:10px}
+  .pw{display:flex;gap:8px;align-items:center;font-family:system-ui,sans-serif;font-size:13px}
+  input,select,textarea,button{font-family:system-ui,sans-serif;font-size:14px}
+  input[type=password],select,textarea,input[type=number]{border:1px solid var(--linea);background:#fff;border-radius:6px;padding:6px 8px}
+  button{border:1px solid var(--inchiostro);background:var(--inchiostro);color:#fff;border-radius:6px;padding:7px 12px;cursor:pointer}
+  button.sec{background:transparent;color:var(--inchiostro)}
+  button.principale{background:var(--accento);border-color:var(--accento)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  main{max-width:1600px;margin:0 auto;padding:16px 24px 60px}
+  .barra-imp{display:flex;flex-wrap:wrap;gap:14px;align-items:end;margin-bottom:14px;font-family:system-ui,sans-serif}
+  .campo{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--tenue);text-transform:uppercase;letter-spacing:.6px;font-family:system-ui,sans-serif}
+  .campo .riga{display:flex;gap:8px;align-items:center}
+  .campo input[type=range]{flex:1;min-width:110px}
+  .campo output{min-width:44px;text-align:right;color:var(--inchiostro);text-transform:none;font-variant-numeric:tabular-nums}
+  .check{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--inchiostro);font-family:system-ui,sans-serif}
+  .griglia{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:1100px){.griglia{grid-template-columns:1fr 1fr}} @media(max-width:700px){.griglia{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--linea);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:9px}
+  .card h2{margin:0;font-size:17px;font-weight:600;display:flex;gap:8px;align-items:baseline}
+  .card h2 small{font-family:system-ui,sans-serif;font-size:11px;color:var(--tenue);font-weight:400;letter-spacing:.6px;text-transform:uppercase}
+  .card h2 em{margin-left:auto;font-family:system-ui,sans-serif;font-style:normal;font-size:10px;padding:2px 6px;border-radius:10px;background:#efe6d6;color:var(--tenue)}
+  .tela{position:relative;aspect-ratio:3/4;border:1px dashed var(--linea);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;
+    background:repeating-linear-gradient(45deg,#fbf8f1,#fbf8f1 10px,#f7f2e8 10px,#f7f2e8 20px)}
+  .tela canvas,.tela img{max-width:100%;max-height:100%;object-fit:contain;display:block;background:#fff;touch-action:none}
+  .tela .vuoto{color:var(--tenue);font-family:system-ui,sans-serif;font-size:13px;text-align:center;padding:16px}
+  .tela .carica{position:absolute;inset:0;background:rgba(246,241,231,.86);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;font-family:system-ui,sans-serif;font-size:13px}
+  .tela.lavoro .carica{display:flex}
+  .tela.drop{border-color:var(--accento);border-style:solid}
+  .spin{width:28px;height:28px;border:3px solid var(--linea);border-top-color:var(--accento);border-radius:50%;animation:g 1s linear infinite} @keyframes g{to{transform:rotate(360deg)}}
+  #selezione{position:absolute;border:2px dashed var(--accento);background:rgba(180,70,47,.12);display:none;pointer-events:none}
+  .azioni{display:flex;flex-wrap:wrap;gap:6px}
+  details.prompt{font-family:system-ui,sans-serif;font-size:12px}
+  details.prompt textarea{width:100%;min-height:110px;margin-top:6px;font-size:12px}
+  .nota{font-family:system-ui,sans-serif;font-size:12px;color:var(--tenue)}
+  .preset{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+  .preset select{flex:1;min-width:150px} .preset input{flex:1;min-width:120px;border:1px solid var(--linea);border-radius:6px;padding:5px 7px}
+  .preset button{padding:5px 9px;font-size:12px}
+  .card.largo{grid-column:1/-1}
+  .cornice-app{position:relative;height:min(82vh,900px);border:1px solid var(--linea);border-radius:10px;overflow:hidden;background:#e9e3d6}
+  .cornice-app iframe{width:100%;height:100%;border:0;display:block} .cornice-app .vuoto{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tenue);font-family:system-ui,sans-serif;font-size:14px;text-align:center;padding:20px}
+  details.avanzate{margin-top:16px;font-family:system-ui,sans-serif} details.avanzate>summary{cursor:pointer;font-size:15px;padding:10px 12px;background:var(--card);border:1px solid var(--linea);border-radius:10px}
+  details.avanzate .griglia{margin-top:12px}
+  .varianti{display:flex;gap:6px;flex-wrap:wrap} .varianti img{width:64px;height:84px;object-fit:contain;background:#fff;border:2px solid var(--linea);border-radius:6px;cursor:pointer}
+  .varianti img.sel{border-color:var(--accento)}
+  .lista-matite{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:3px 10px;max-height:260px;overflow:auto;margin-top:6px}
+  .lista-matite label{display:flex;gap:5px;align-items:center;font-size:12px} .lista-matite i{width:14px;height:14px;border:1px solid #0003;border-radius:3px;flex:none}
+  .galleria{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px}
+  .galleria figure{margin:0;background:#fff;border:1px solid var(--linea);border-radius:8px;padding:6px;font-family:system-ui,sans-serif;font-size:11px}
+  .galleria img{width:100%;height:130px;object-fit:contain;background:#faf7f0;cursor:pointer} .galleria .azioni button{padding:3px 7px;font-size:11px}
+  .col small{color:var(--tenue);font-size:10px;display:block;line-height:1.1}
+  .regola{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+  #log{margin-top:16px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;color:var(--tenue);max-height:170px;overflow:auto;border-top:1px solid var(--linea);padding-top:8px}
+  .ok{color:var(--ok)} .err{color:var(--err)}
+  .legenda{margin-top:16px;background:var(--card);border:1px solid var(--linea);border-radius:10px;padding:12px}
+  .legenda h3{margin:0 0 8px;font-size:17px;font-weight:600}
+  #colori{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px;font-family:system-ui,sans-serif;font-size:12px}
+  .col{display:flex;align-items:center;gap:6px} .col b{min-width:26px;text-align:right} .col i{width:22px;height:22px;border-radius:4px;border:1px solid rgba(0,0,0,.2);flex:none}
+  .col span{color:var(--tenue);font-family:ui-monospace,Menlo,monospace;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Arte <span>da colorare</span> <small class="nota">laboratorio</small></h1>
+  <div class="pw">
+    <label for="pw">Password</label><input type="password" id="pw" placeholder="password app">
+    <button class="sec" id="btnCheck">Verifica</button><span id="statoPw"></span>
+    <nav><a href="/app.html">🎨 App Colora</a><a href="/puzzle.html">Puzzle senza AI</a><a href="/ai.html">AI semplice</a></nav>
+  </div>
+</header>
+
+<main>
+  <div class="barra-imp">
+    <label class="campo">Modello Gemini
+      <select id="modello">
+        <option value="gemini-nano-banana-2.1">Nano Banana 2.1 (consigliato)</option>
+        <option value="gemini-3-pro-image">Nano Banana Pro (più preciso, costa di più)</option>
+        <option value="gemini-3.1-flash-image">Nano Banana 2</option>
+        <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite (economico)</option>
+      </select>
+    </label>
+    <label class="campo">Risoluzione
+      <select id="risoluzione"><option value="1K">1K (economica)</option><option value="2K" selected>2K (stampa A4)</option><option value="4K">4K (costosa)</option></select>
+    </label>
+    <span class="nota" id="infoFormato"></span>
+  </div>
+
+  <div class="griglia">
+    <!-- 0. ORIGINALE -->
+    <section class="card">
+      <h2>1 <small>Carica la foto</small></h2>
+      <div class="tela" id="telaOrig"><div class="vuoto">Trascina qui l'opera<br>oppure usa il pulsante</div><div id="selezione"></div></div>
+      <div class="azioni">
+        <input type="file" id="fileOrig" accept="image/*" hidden>
+        <button class="sec" id="btnFile">Scegli immagine…</button>
+        <button class="sec" id="btnRitaglia" disabled>Ritaglia selezione</button>
+        <button class="sec" id="btnAnnullaRit" disabled>Annulla ritaglio</button>
+      </div>
+      <div class="nota">Togli la cornice trascinando un rettangolo sul quadro. L'immagine viene adattata al formato Gemini più vicino, così sketch e originale si sovrappongono.</div>
+    </section>
+
+    <!-- 1. SKETCH -->
+    <section class="card">
+      <h2>2 <small>Sketch con Gemini</small><em>Gemini</em></h2>
+      <div class="tela" id="telaSketch"><div class="vuoto">Qui comparirà lo sketch in bianco e nero</div><div class="carica"><div class="spin"></div>Gemini sta disegnando… (20–60 s)</div></div>
+      <div class="azioni">
+        <button class="principale" id="btnSketch" disabled>Genera sketch</button>
+        <label class="check" title="Appena carichi la foto parte lo sketch, poi la segmentazione"><input type="checkbox" id="autoSketch" checked> automatico</label>
+        <select id="nVarianti" title="Quante varianti generare insieme"><option value="1">1 variante</option><option value="2">2 varianti</option><option value="3">3 varianti</option><option value="4">4 varianti</option></select>
+        <input type="file" id="fileSketch" accept="image/*" hidden>
+        <button class="sec" id="btnCaricaSketch">Carica il mio sketch…</button>
+        <button class="sec" id="dlSketch" disabled>Scarica</button>
+      </div>
+      <div id="varianti" class="varianti"></div>
+      <details class="prompt"><summary>Prompt 1 — sketch</summary><textarea id="p1"></textarea></details>
+    </section>
+
+    <!-- 2. SEGMENTATA -->
+    <section class="card">
+      <h2>3 <small>Segmentazione e colori</small><em>calcolo locale</em></h2>
+      <div class="tela" id="telaSeg"><div class="vuoto" id="vuotoSeg">Si calcola dopo lo sketch (passo 2): l'originale diviso in pezzi col colore prevalente, con lo sketch sopra</div><div class="carica"><div class="spin"></div><span id="caricaSeg">Segmentazione…</span></div></div>
+      <div class="regola">
+        <label class="campo">Colori<span class="riga"><input type="range" id="segK" min="2" max="500" value="120"><output id="segKOut"></output></span></label>
+        <label class="campo">Dettaglio dei pezzi<span class="riga"><input type="range" id="segKd" min="2" max="120" value="60"><output id="segKdOut"></output></span></label>
+        <label class="campo">Pezzo minimo (px)<span class="riga"><input type="range" id="segMin" min="2" max="400" value="20"><output id="segMinOut"></output></span></label>
+        <label class="campo">Morbidezza<span class="riga"><input type="range" id="segSmooth" min="0" max="4" value="1"><output id="segSmoothOut"></output></span></label>
+        <label class="campo">Segui lo sketch<span class="riga"><input type="range" id="segSegui" min="0" max="100" value="60"><output id="segSeguiOut"></output></span></label>
+        <label class="campo">Vista
+          <select id="segVista"><option value="pezzi">Pezzi col colore prevalente</option><option value="fine">Pixel col colore prevalente (più fine)</option></select></label>
+        <label class="campo">Realismo (luci e ombre dentro i pezzi)<span class="riga"><input type="range" id="segReal" min="0" max="100" value="65"><output id="segRealOut"></output></span></label>
+        <label class="check"><input type="checkbox" id="segSketchSopra" checked> Sketch sovrapposto</label>
+        <label class="check"><input type="checkbox" id="segBordi"> Contorni dei pezzi</label>
+      </div>
+      <div class="azioni">
+        <button class="principale" id="btnSegLoc" disabled>Segmenta l'originale</button>
+        <button class="sec" id="btnConsigliati" title="Riporta i cursori a valori equilibrati e fedeli">Valori consigliati</button>
+        <button class="principale" id="btnPerfeziona" style="background:var(--accento2);border-color:var(--accento2)" title="Gemini sceglie le impostazioni migliori (i colori restano quelli reali)">✨ Perfeziona con Gemini</button>
+        <input type="file" id="fileSeg" accept="image/*" hidden>
+        <button class="sec" id="btnCaricaSeg">Carica…</button>
+        <button class="sec" id="dlSeg" disabled>Scarica</button>
+      </div>
+      <div class="nota">Nessun colore inventato: tutti i colori vengono dai pixel dell'originale e vengono assegnati alle zone dello sketch.</div>
+      <div class="azioni"><label class="check"><input type="checkbox" id="perfContorni"> anche i contorni disegnati da Gemini (solo i confini, non i colori)</label><button class="sec" id="btnTogliMappa" style="padding:3px 8px;font-size:12px">togli contorni Gemini</button></div>
+      <div class="nota" id="statoPerf"></div>
+      <div class="nota" id="statoColori"></div>
+      <details class="prompt"><summary>Alternativa con Gemini (ridisegna l'immagine: non fedele)</summary>
+        <label class="check" style="margin-top:6px"><input type="checkbox" id="segConSketch" checked> Usa lo sketch del passo 1 come guida</label>
+        <div class="azioni" style="margin-top:6px"><button class="sec" id="btnSeg" disabled>Genera con Gemini</button></div>
+        <textarea id="p2"></textarea></details>
+    </section>
+
+    <!-- 4. COLORA -->
+    <section class="card largo">
+      <h2>4 <small>Colora — tocca una zona col colore giusto: appare il pezzo dell'originale</small></h2>
+      <div class="cornice-app"><iframe id="frameApp" title="Colora" src="about:blank"></iframe><div class="vuoto" id="vuotoApp">Qui comparirà il disegno da colorare quando sketch e segmentazione sono pronti.</div></div>
+      <div class="azioni">
+        <select id="zone4" title="Quali zone si colorano"><option value="seg">Zone = pezzi della segmentazione (passo 3)</option><option value="sketch">Zone = aree dello sketch (passo 2)</option></select>
+        <label class="check"><input type="checkbox" id="linee4" checked> Sovrapponi le linee dello sketch</label>
+        <button class="principale" id="btnSchermo" disabled>Apri a schermo intero</button>
+        <button class="principale" id="btnTelefono" disabled style="background:var(--accento2);border-color:var(--accento2)">📱 Invia al telefono</button>
+        <button class="sec" id="btnRigenera4" disabled>Ricrea dal passo 3</button>
+        <span class="nota">Nel menu ⋯ dell'app: "Rivela l'originale" oppure colore piatto, "solo il colore giusto", numeri.</span>
+      </div>
+    </section>
+  </div>
+
+  <details class="avanzate"><summary>Opzioni avanzate: allineamento, zone e colori, numeri, stampa e pacchetti</summary>
+  <div class="griglia">
+    <!-- 3a. SOVRAPPOSIZIONE -->
+    <section class="card">
+      <h2>3 <small>Sovrapposizione sketch + reale</small></h2>
+      <div class="tela" id="telaOver"><div class="vuoto">Serve lo sketch (passo 1)</div></div>
+      <div class="regola">
+        <label class="campo">Trasparenza sketch<span class="riga"><input type="range" id="opac" min="0" max="100" value="70"><output id="opacOut"></output></span></label>
+        <label class="campo">Fonte dei colori
+          <select id="fonte"><option value="seg">Segmentata (passo 3)</option><option value="orig">Immagine reale</option></select></label>
+        <label class="campo">Sposta X<span class="riga"><input type="range" id="dx" min="-60" max="60" value="0"><output id="dxOut"></output></span></label>
+        <label class="campo">Sposta Y<span class="riga"><input type="range" id="dy" min="-60" max="60" value="0"><output id="dyOut"></output></span></label>
+        <label class="campo">Scala<span class="riga"><input type="range" id="sc" min="90" max="110" value="100" step="0.5"><output id="scOut"></output></span></label>
+        <div class="campo"><button class="sec" id="btnAzzera">Azzera allineamento</button></div>
+      </div>
+      <div class="azioni"><button class="principale" id="btnAllinea" disabled>Allinea automaticamente</button><span class="nota" id="statoAllinea"></span></div>
+      <div class="nota">Se le linee non coincidono con il quadro, correggi con Sposta/Scala guardando questa anteprima.</div>
+    </section>
+
+    <!-- 3b. COLORATA A SEGMENTI -->
+    <section class="card">
+      <h2>3 <small>Colori prevalenti</small><em>calcolo locale</em></h2>
+      <div class="tela" id="telaCol"><div class="vuoto">Qui ogni zona dello sketch prende il colore che prevale nell'immagine reale</div><div class="carica"><div class="spin"></div><span id="caricaCol">Calcolo…</span></div></div>
+      <div class="regola">
+        <label class="campo">Massimo colori<span class="riga"><input type="range" id="kRange" min="2" max="500" value="60"><input type="number" id="kNum" min="2" max="500" value="60" style="width:64px"></span></label>
+        <label class="campo">Soglia linee<span class="riga"><input type="range" id="soglia" min="60" max="230" value="150"><output id="sogliaOut"></output></span></label>
+        <label class="campo">Chiudi buchi linee<span class="riga"><input type="range" id="chiusura" min="0" max="3" value="1"><output id="chiusuraOut"></output></span></label>
+        <label class="campo">Collega linee aperte (px)<span class="riga"><input type="range" id="gap" min="0" max="30" value="10"><output id="gapOut"></output></span></label>
+        <label class="campo">Tavolozza
+          <select id="tavolozza"><option value="libera">Colori liberi (dall'immagine)</option><option value="faber120">Faber-Castell Polychromos 120</option><option value="prisma150">Prismacolor Premier 150</option><option value="prisma24">Prismacolor Premier 24</option><option value="mia">La mia scatola…</option></select></label>
+        <label class="campo">Zona minima (px)<span class="riga"><input type="range" id="minArea" min="5" max="400" value="30"><output id="minAreaOut"></output></span></label>
+        <label class="campo">Sfumature (toni per zona)<span class="riga"><input type="range" id="toni" min="1" max="5" value="3"><output id="toniOut"></output></span></label>
+        <label class="campo">Vista colorata
+          <select id="vista"><option value="piatta">Piatta (un colore per zona)</option><option value="morbida">Morbida (sfumature reali)</option></select></label>
+      </div>
+      <details class="prompt" id="boxMia"><summary>La mia scatola di matite (scegli quelle che hai)</summary>
+        <div class="azioni" style="margin-top:6px"><select id="miaMarca"><option value="faber120">Faber-Castell Polychromos</option><option value="prisma150">Prismacolor Premier</option></select>
+          <button class="sec" id="miaTutte">Tutte</button><button class="sec" id="miaNessuna">Nessuna</button><span class="nota" id="miaConta"></span></div>
+        <div id="miaLista" class="lista-matite"></div>
+      </details>
+      <label class="check"><input type="checkbox" id="lineeSopra" checked> Mostra le linee sopra i colori</label>
+      <div class="azioni">
+        <button class="principale" id="btnColori" disabled>Rileva colori</button>
+        <button class="sec" id="btnColGemini" disabled title="Alternativa: fa colorare lo sketch a Gemini">Colora con Gemini</button>
+        <button class="sec" id="dlCol" disabled>Scarica</button>
+        <button class="sec" id="prCol" disabled>Stampa A4</button>
+      </div>
+      <details class="prompt"><summary>Prompt 3 — colorazione con Gemini (alternativa)</summary><textarea id="p3"></textarea></details>
+    </section>
+
+    <!-- 3c. DA COLORARE NUMERATA -->
+    <section class="card">
+      <h2>4 <small>Da colorare con numeri</small></h2>
+      <div class="tela" id="telaNum"><div class="vuoto">Qui comparirà lo sketch con il numero del colore in ogni zona</div></div>
+      <div class="regola">
+        <label class="campo">Stile pagina
+          <select id="stilePagina"><option value="linee">Linee + numeri</option><option value="grigi">Scala di grigi (guida delle ombre)</option></select></label>
+        <label class="campo">Linee delle sfumature
+          <select id="lineeToni"><option value="tratteggio">Tratteggiate</option><option value="grigio">Grigio chiaro</option><option value="nessuna">Nascoste</option></select></label>
+        <label class="check"><input type="checkbox" id="numeri" checked> Numeri nelle zone</label>
+        <label class="campo">Grandezza numeri<span class="riga"><input type="range" id="fsMax" min="8" max="40" value="22"><output id="fsMaxOut"></output></span></label>
+      </div>
+      <div class="azioni">
+        <button class="sec" id="dlNum" disabled>Scarica</button>
+        <button class="sec" id="prNum" disabled>Stampa A4</button>
+        <button class="sec" id="prLeg" disabled>Stampa legenda</button>
+      </div>
+      <div class="azioni"><button class="sec" id="dlSvg" disabled>Scarica SVG (vettoriale)</button><button class="sec" id="dlPdf" disabled>Scarica PDF A4</button></div>
+      <button class="principale" id="btnPacchetto" disabled>⬇ Scarica pacchetto per app (.zip)</button>
+      <button class="principale" id="btnApp" disabled style="background:var(--accento2);border-color:var(--accento2)">🎨 Colora nell'app</button>
+      <div class="nota">Il pacchetto contiene tutte le immagini, la mappa delle zone, la tavolozza e un file dati (JSON) pronto per un'app di colorazione.</div>
+    </section>
+  </div>
+  </details>
+
+  <section class="legenda"><h3>Legenda colori <small class="nota" id="infoLeg"></small></h3><div id="colori" class="nota">Dopo "Rileva colori" qui trovi i colori numerati (1 = il più usato).</div></section>
+  <section class="legenda"><h3>Galleria <small class="nota">opere salvate in questo browser (riaprirle non costa nulla)</small></h3>
+    <div class="azioni"><button class="sec" id="btnSalvaGal" disabled>Salva l'opera attuale</button>
+      <label class="check"><input type="checkbox" id="autoSalva" checked> Salva da sola dopo ogni sketch Gemini</label>
+      <input type="file" id="fileSerie" accept="image/*" multiple hidden><button class="principale" id="btnSerie">Elabora in serie…</button>
+      <label class="check"><input type="checkbox" id="serieZip" checked> scarica il pacchetto di ogni opera</label><span class="nota" id="statoSerie"></span></div>
+    <div id="galleria" class="galleria"></div>
+  </section>
+  <details class="prompt" style="margin-top:12px"><summary>Gestione prompt: esporta, importa, ripristina</summary>
+    <div class="azioni" style="margin-top:6px">
+      <button class="sec" id="btnEsportaPreset">Esporta i miei prompt (.json)</button>
+      <input type="file" id="fileImporta" accept=".json,application/json" hidden>
+      <button class="sec" id="btnImportaPreset">Importa prompt…</button>
+      <button class="sec" id="btnResetPrompt">Ricarica i prompt predefiniti nei 3 riquadri</button>
+    </div>
+    <div class="nota">I prompt salvati restano in questo browser. Esportali per non perderli o per usarli su un altro PC.</div>
+  </details>
+  <div id="log"></div>
+</main>
+
+<script src="matite.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+const PRESET_BASE = {
+  p1: [
+    { id: "fedele", nome: "Fedele — ricalco dell'originale", testo: `Transform image 1 into a faithful line-art coloring page, as if a professional illustrator traced the original painting: clean, smooth, confident black outlines on a pure white background. Keep everything else exactly the same: identical framing, scale and position of every element, so the drawing overlays the painting precisely. Follow the original faithfully: composition, pose, proportions, anatomy, face and expression, hands, clothing folds, hair and background landscape, without adding, removing or stylizing anything. Draw the face with delicate, accurate lines (eyes, nose, mouth) so the person stays recognizable. Medium, even line weight, slightly bolder on the main contours; interior lines only where needed for folds, hair and landscape shapes. Every line is continuous, smooth and fluid: no dashed, dotted, broken or sketchy strokes. Every area is a fully closed shape with generous white space to color. Pure line art only: white interiors, black lines, no gray, no shading, no hatching, no text, no border.` },
+    { id: "ombre", nome: "Fedele con zone d'ombra (per sfumare)", testo: `Transform image 1 into a faithful line-art coloring page with shading zones: clean black outlines on a pure white background, keeping identical framing, scale and position of every element. Follow the original exactly (composition, pose, anatomy, face, hands, folds, background). In addition to the contours, draw thin closed outlines around the main areas of light, midtone and shadow on skin, fabric and background, so each object is divided into light, medium and dark zones that can be colored with three shades of the same color. Faces: delicate accurate features, recognizable. Every line is continuous, smooth and fluid: no dashed, dotted, broken or sketchy strokes. Every area is a fully closed shape. Pure line art only: white interiors, no gray, no shading, no hatching, no text, no border.` },
+    { id: "decorativo", nome: "Decorativo per adulti (nuvole a spirale, fiori)", testo: `Transform image 1 into a highly detailed adult coloring book page: clean black line art on a pure white background, keeping the same main subject, composition, poses, anatomy and faces, with identical framing. Render the sky and background as decorative stylized swirling patterns and enrich the foreground with small flowers, leaves and plants, creating many closed areas to color. Smooth, confident, continuous outlines with slightly varied weight (never dashed or broken); fine interior lines for anatomy, hair, drapery folds and wood grain. Every area is a fully closed shape. Pure line art only: white interiors, no gray, no shading, no hatching, no text, no border.` },
+    { id: "bambini", nome: "Semplice per bambini (linee spesse)", testo: `Transform image 1 into a simple coloring page for children: bold, thick, smooth, continuous black outlines (never dashed or broken) on a pure white background, keeping the same subject, pose and framing. Simplify the scene into few large, clearly closed shapes; keep the face friendly and simple; reduce background details to a few big shapes. Generous open areas, nothing tiny. Pure line art only: white interiors, no gray, no shading, no hatching, no text, no border.` },
+  ],
+  p2: [
+    { id: "fedele", nome: "Segmenti col colore prevalente", testo: `Transform image 1 into a paint-by-numbers style segmented image: divide it into clearly separated flat-color segments that follow the natural shapes (face, hair, skin, clothing and its folds, background areas). Fill each segment with one flat color equal to the dominant color of that area in the original, keeping the original palette and hues. Thin dark outlines between segments. Keep everything else exactly the same: identical composition, framing, scale and position of every element, so it overlays the original precisely. Flat colors only, no gradients, no texture, no text, no border.` },
+    { id: "tretoni", nome: "Segmenti con 3 toni (chiaro/medio/scuro)", testo: `Transform image 1 into a segmented paint-by-numbers image with shading: split every object (skin, hair, each piece of clothing, sky, landscape) into three flat-color zones — light, medium and dark — following where the light and shadows fall in the original, using the original hues for each zone. Thin dark outlines around every zone. Keep identical composition, framing, scale and position of every element, so it overlays the original precisely. Flat colors only, no gradients, no texture, no text, no border.` },
+  ],
+  p3: [
+    { id: "piatto", nome: "Colori piatti", testo: `Color image 1 using image 2 as the color reference: image 1 is a black line-art coloring page traced from the painting in image 2. Fill every closed area of image 1 with a single flat color equal to the dominant color of the corresponding area in image 2. Keep all black lines exactly as they are, in the same positions, with the same framing and size. Flat colors only, no gradients, no new lines, no text, no border.` },
+    { id: "matite", nome: "Sfumato a matite colorate", testo: `Color image 1 using image 2 as the color reference: image 1 is a black line-art coloring page traced from the painting in image 2. Color it like a skilled colored-pencil artist, with soft, smooth shading inside each area that follows the light and shadows of image 2 and its original hues. Keep all black lines exactly as they are, in the same positions, with the same framing and size. No new lines, no text, no border.` },
+  ],
+};
+const P2_GUIDA = ` Image 2 is a line drawing of the same painting: use its closed areas as the segments, keeping its lines in the same positions.`;
+const RAPPORTI = ["1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9"];
+
+const st = { img: null, crop: null, sel: null, base: null, ratio: "3:4", sketch: null, seg: null, res: null, nome: "opera", worker: null };
+
+// ---------- utilità ----------
+function log(msg, cls) { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = new Date().toLocaleTimeString() + "  " + msg; $("log").prepend(d); }
+function salva(k, v) { try { localStorage.setItem("lab_" + k, v); } catch (e) {} }
+function leggi(k) { try { return localStorage.getItem("lab_" + k); } catch (e) { return null; } }
+function caricaImg(src) { return new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; }); }
+function hex(c) { return "#" + c.map((v) => v.toString(16).padStart(2, "0")).join(""); }
+function mostra(telaId, el) { const t = $(telaId); t.querySelectorAll("canvas,img,.vuoto").forEach((n) => n.remove()); t.prepend(el); }
+function lavoro(telaId, on) { $(telaId).classList.toggle("lavoro", on); aggiorna(); }
+function rapportoVicino(w, h) { const r = w / h; let best = "1:1", d = 1e9; for (const s of RAPPORTI) { const [a, b] = s.split(":").map(Number); const x = Math.abs(Math.log(r / (a / b))); if (x < d) { d = x; best = s; } } return best; }
+function canvasDa(img, w, h) { const c = document.createElement("canvas"); c.width = w || img.width; c.height = h || img.height; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height); return c; }
+function aJpegB64(cv, maxLato = 1600) { const s = Math.min(1, maxLato / Math.max(cv.width, cv.height)); const c = canvasDa(cv, Math.round(cv.width * s), Math.round(cv.height * s)); return c.toDataURL("image/jpeg", 0.92).split(",")[1]; }
+function aggiorna() {
+  const occ = document.querySelector(".tela.lavoro") !== null;
+  $("btnSketch").disabled = !st.base || occ;
+  $("btnSeg").disabled = !st.base || occ; $("btnSegLoc").disabled = !st.base || occ; $("btnPerfeziona").disabled = !st.base || !st.segRes || occ;
+  $("btnColori").disabled = !st.base || !st.sketch || occ;
+  $("btnColGemini").disabled = !st.base || !st.sketch || occ;
+  $("dlSketch").disabled = !st.sketch; $("dlSeg").disabled = !st.seg;
+  ["dlCol", "prCol", "dlNum", "prNum", "prLeg"].forEach((id) => ($(id).disabled = !st.res && !(id === "dlCol" && st.colGemini)));
+  $("btnPacchetto").disabled = $("btnApp").disabled = $("dlSvg").disabled = $("dlPdf").disabled = !st.res;
+  $("btnAllinea").disabled = !st.base || !st.sketch; $("btnSalvaGal").disabled = !st.base;
+}
+
+// ---------- originale, ritaglio e formato Gemini ----------
+// dopo la foto: prima lo sketch (passo 2), poi la segmentazione (passo 3)
+function avviaDopoFoto() {
+  mostra("telaSeg", Object.assign(document.createElement("div"), { className: "vuoto", textContent: "In attesa dello sketch (passo 2)…" }));
+  if ($("autoSketch").checked) { log("Genero lo sketch automaticamente…"); generaSketch(); }
+  else log("Ora genera o carica lo sketch (passo 2): la segmentazione partirà subito dopo.");
+}
+function apriOrig(f) {
+  if (!f || !f.type.startsWith("image/")) return log("Il file non è un'immagine.", "err");
+  st.nome = f.name.replace(/\.[^.]+$/, "");
+  const fr = new FileReader();
+  fr.onload = async () => {
+    try { st.img = await caricaImg(fr.result); } catch (e) { return log("Formato non leggibile dal browser: usa JPG o PNG.", "err"); }
+    st.crop = null; st.sketch = st.seg = st.res = st.colGemini = null; preparaBase();
+    log(`Caricata ${f.name} (${st.img.width}×${st.img.height}).`); avviaDopoFoto();
+  };
+  fr.readAsDataURL(f);
+}
+// base = immagine (ritagliata) portata esattamente al rapporto Gemini più vicino (ritaglio centrale minimo)
+function preparaBase() {
+  const c = st.crop || { x: 0, y: 0, w: st.img.width, h: st.img.height };
+  st.ratio = rapportoVicino(c.w, c.h); const [a, b] = st.ratio.split(":").map(Number); const r = a / b;
+  let w = c.w, h = c.h, x = c.x, y = c.y;
+  if (w / h > r) { const nw = Math.round(h * r); x += Math.round((w - nw) / 2); w = nw; } else { const nh = Math.round(w / r); y += Math.round((h - nh) / 2); h = nh; }
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h; cv.getContext("2d").drawImage(st.img, x, y, w, h, 0, 0, w, h);
+  st.base = cv; const vis = canvasDa(cv); vis.id = "cvOrig"; mostra("telaOrig", vis);
+  $("selezione").style.display = "none"; st.sel = null; $("btnRitaglia").disabled = true; $("btnAnnullaRit").disabled = !st.crop;
+  $("infoFormato").textContent = `Formato di lavoro: ${st.ratio} (${w}×${h})`;
+  st.seg = null; st.segRes = null; st.mappaGemini = null;
+  disegnaOverlay(); aggiorna();
+}
+(() => { // selezione col mouse/dito
+  const tela = $("telaOrig"); let start = null;
+  const punto = (e) => { const cv = $("cvOrig"), r = cv.getBoundingClientRect(); return { x: Math.min(Math.max(e.clientX - r.left, 0), r.width), y: Math.min(Math.max(e.clientY - r.top, 0), r.height), r }; };
+  tela.addEventListener("pointerdown", (e) => { if (!$("cvOrig")) return; start = punto(e); tela.setPointerCapture(e.pointerId); e.preventDefault(); });
+  tela.addEventListener("pointermove", (e) => { if (!start) return; const p = punto(e), tr = tela.getBoundingClientRect();
+    const x = Math.min(start.x, p.x), y = Math.min(start.y, p.y), w = Math.abs(p.x - start.x), h = Math.abs(p.y - start.y), s = $("selezione");
+    s.style.display = "block"; s.style.left = (p.r.left - tr.left + x) + "px"; s.style.top = (p.r.top - tr.top + y) + "px"; s.style.width = w + "px"; s.style.height = h + "px";
+    st.sel = { x: x / p.r.width, y: y / p.r.height, w: w / p.r.width, h: h / p.r.height }; });
+  tela.addEventListener("pointerup", () => { start = null; $("btnRitaglia").disabled = !(st.sel && st.sel.w > 0.03 && st.sel.h > 0.03); });
+})();
+$("btnRitaglia").onclick = () => {
+  // la selezione è relativa alla base attuale: la riporto sulle coordinate dell'immagine originale
+  const c = st.crop || { x: 0, y: 0, w: st.img.width, h: st.img.height };
+  const [a, b] = st.ratio.split(":").map(Number), r = a / b; let bw = c.w, bh = c.h, bx = c.x, by = c.y;
+  if (bw / bh > r) { const nw = Math.round(bh * r); bx += Math.round((bw - nw) / 2); bw = nw; } else { const nh = Math.round(bw / r); by += Math.round((bh - nh) / 2); bh = nh; }
+  st.crop = { x: Math.round(bx + st.sel.x * bw), y: Math.round(by + st.sel.y * bh), w: Math.round(st.sel.w * bw), h: Math.round(st.sel.h * bh) };
+  st.sketch = st.seg = st.res = null; preparaBase(); log("Ritaglio applicato."); avviaDopoFoto();
+};
+$("btnAnnullaRit").onclick = () => { st.crop = null; preparaBase(); };
+
+// ---------- Gemini ----------
+function estraiImmagine(obj) {
+  let img = null; const testi = [];
+  (function giro(o) { if (!o || typeof o !== "object") return; if (Array.isArray(o)) return o.forEach(giro);
+    if (o.type === "image" && typeof o.data === "string") img = { data: o.data, mime: o.mime_type || "image/jpeg" };
+    const inl = o.inlineData || o.inline_data; if (inl && typeof inl.data === "string") img = { data: inl.data, mime: inl.mimeType || inl.mime_type || "image/png" };
+    if (typeof o.text === "string") testi.push(o.text); for (const k in o) if (k !== "data") giro(o[k]); })(obj);
+  return { img, testo: testi.join(" ").trim() };
+}
+async function chiamaGemini(prompt, immagini) {
+  const model = $("modello").value, size = $("risoluzione").value, ratio = st.ratio;
+  const inter = (fmt) => { const b = { model, input: [{ type: "text", text: prompt }, ...immagini.map((d) => ({ type: "image", mime_type: "image/jpeg", data: d }))] };
+    if (fmt) b.response_format = { type: "image", mime_type: "image/jpeg", image_size: size, aspect_ratio: ratio }; return b; };
+  const gen = () => ({ contents: [{ role: "user", parts: [{ text: prompt }, ...immagini.map((d) => ({ inline_data: { mime_type: "image/jpeg", data: d } }))] }],
+    generationConfig: { responseModalities: ["TEXT", "IMAGE"], imageConfig: { imageSize: size, aspectRatio: ratio } } });
+  const tent = [{ n: "interactions", api: "interactions", b: () => inter(true) }, { n: "interactions (senza formato)", api: "interactions", b: () => inter(false) }, { n: "generateContent", api: "generateContent", b: gen }];
+  const pref = leggi("metodoOk"); tent.sort((a, b) => (b.n === pref) - (a.n === pref));
+  let ultimo = "";
+  for (const t of tent) {
+    const r = await fetch(`/api/gemini?model=${encodeURIComponent(model)}&api=${t.api}`, { method: "POST", headers: { "content-type": "application/json", "x-app-password": $("pw").value }, body: JSON.stringify(t.b()) });
+    const txt = await r.text(); let d = null; try { d = JSON.parse(txt); } catch (e) {}
+    if (r.status === 401) throw new Error("Password errata");
+    if (!r.ok) { ultimo = `[${t.n}] HTTP ${r.status}: ${(d && (d.error?.message || d.error)) || txt.slice(0, 300)}`; log(ultimo, "err"); if (r.status === 400 || r.status === 404) continue; throw new Error(ultimo); }
+    const { img, testo } = estraiImmagine(d);
+    if (img) { salva("metodoOk", t.n); return "data:" + img.mime + ";base64," + img.data; }
+    const bl = JSON.stringify(d).match(/"(blockReason|finishReason|finish_reason|block_reason)"\s*:\s*"([A-Z_]+)"/);
+    throw new Error("Nessuna immagine restituita" + (bl ? ` (${bl[1]}: ${bl[2]} — probabile filtro di sicurezza)` : "") + (testo ? ` — ${testo.slice(0, 300)}` : ""));
+  }
+  throw new Error(ultimo || "Richiesta non riuscita");
+}
+async function passoGemini(telaId, chiave, prompt, immagini, etichetta) {
+  lavoro(telaId, true);
+  try {
+    log(`${etichetta}: invio a Gemini (${$("modello").value}, ${st.ratio}, ${$("risoluzione").value})…`);
+    const url = await chiamaGemini(prompt, immagini);
+    st[chiave] = await caricaImg(url); mostra(telaId, canvasDa(st[chiave])); log(`${etichetta}: pronto.`, "ok"); return true;
+  } catch (e) { log(`${etichetta} — errore: ${e.message}`, "err"); return false; }
+  finally { lavoro(telaId, false); }
+}
+async function generaSketch() {
+  const n = Number($("nVarianti").value), b64 = aJpegB64(st.base); lavoro("telaSketch", true); $("varianti").innerHTML = "";
+  log(`Sketch: invio a Gemini ${n > 1 ? n + " richieste in parallelo" : ""} (${$("modello").value}, ${st.ratio}, ${$("risoluzione").value})…`);
+  const ris = await Promise.allSettled(Array.from({ length: n }, () => chiamaGemini($("p1").value, [b64])));
+  lavoro("telaSketch", false);
+  const ok = []; for (const r of ris) { if (r.status === "fulfilled") ok.push(await caricaImg(r.value)); else log("Sketch — errore: " + r.reason.message, "err"); }
+  if (!ok.length) return false;
+  log(`Sketch pronti: ${ok.length}${ok.length > 1 ? " — clicca una miniatura per scegliere" : ""}.`, "ok"); st.variantiSketch = ok; mostraVarianti(); await scegliSketch(ok[0]);
+  if ($("autoSalva").checked) salvaGalleria(true);
+  return true;
+}
+function mostraVarianti() { const box = $("varianti"); box.innerHTML = ""; if (!st.variantiSketch || st.variantiSketch.length < 2) return;
+  st.variantiSketch.forEach((im, i) => { const t = document.createElement("img"); t.src = im.src; t.title = "Variante " + (i + 1); if (im === st.sketch) t.className = "sel";
+    t.onclick = async () => { await scegliSketch(im); box.querySelectorAll("img").forEach((x) => (x.className = x === t ? "sel" : "")); }; box.appendChild(t); }); }
+async function scegliSketch(im) { st.sketch = im; mostra("telaSketch", canvasDa(im)); st.res = null; disegnaOverlay(); await allineaAuto(); await segmentaLocale(); }
+$("btnSketch").onclick = generaSketch;
+$("btnSeg").onclick = () => {
+  const usa = $("segConSketch").checked && st.sketch;
+  const imgs = [aJpegB64(st.base)]; if (usa) imgs.push(aJpegB64(canvasDa(st.sketch)));
+  passoGemini("telaSeg", "seg", $("p2").value + (usa ? P2_GUIDA : ""), imgs, "Segmentata");
+};
+// ---------- passo 2: segmentazione locale dell'originale (nessun colore cambiato) ----------
+function segmentaLocale() { return new Promise((fine) => {
+  if (!st.base) return fine(false); if (st.wkSeg) st.wkSeg.terminate();
+  const k = Math.min(1, 1200 / Math.max(st.base.width, st.base.height)), w = Math.round(st.base.width * k), h = Math.round(st.base.height * k);
+  const rgba = canvasDa(st.base, w, h).getContext("2d").getImageData(0, 0, w, h).data; st.segPix = new Uint8ClampedArray(rgba);
+  // linee dello sketch riportate nel formato dell'originale: diventano confini per i pezzi
+  let barriera = null; const seguire = Number($("segSegui").value);
+  const metti = (img, sc, dxp, dyp, soglia) => { const SW = img.width, SH = img.height, ox = (SW - SW * sc) / 2 + dxp * SW, oy = (SH - SH * sc) / 2 + dyp * SH;
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(img, -ox * w / (SW * sc), -oy * h / (SH * sc), w / sc, h / sc);
+    const d = g.getImageData(0, 0, w, h).data; barriera = barriera || new Uint8Array(w * h); for (let i = 0; i < w * h; i++) if (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2] < soglia) barriera[i] = 1; };
+  if (st.mappaGemini) metti(st.mappaGemini.img, st.mappaGemini.sc, st.mappaGemini.dx, st.mappaGemini.dy, 128);
+  if (st.sketch && seguire > 0) {
+    const SW = st.sketch.width, SH = st.sketch.height, sc = Number($("sc").value) / 100, ox = (SW - SW * sc) / 2 + Number($("dx").value) / 1000 * SW, oy = (SH - SH * sc) / 2 + Number($("dy").value) / 1000 * SH;
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h);
+    g.drawImage(st.sketch, -ox * w / (SW * sc), -oy * h / (SH * sc), w / sc, h / sc);
+    const d = g.getImageData(0, 0, w, h).data; barriera = barriera || new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) if (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2] < 170) barriera[i] = 1;
+  }
+  lavoro("telaSeg", true); const wk = new Worker("segmenta-worker.js"); st.wkSeg = wk;
+  wk.onmessage = (e) => { const m = e.data; if (m.tipo === "progresso") { $("caricaSeg").textContent = m.msg; return; }
+    wk.terminate(); st.wkSeg = null; lavoro("telaSeg", false);
+    if (m.tipo === "errore") { log("Segmentazione — errore: " + m.msg, "err"); return fine(false); }
+    st.segRes = m.res; disegnaSeg(); if ($("zone4").value === "seg") aggiornaColora(); log(`Segmentata: ${m.res.nReg.toLocaleString("it")} pezzi, ${m.res.kFine} colori reali (${(m.res.ms / 1000).toFixed(1)} s).`, "ok");
+    if (st.sketch) rilevaColori(); fine(true); };
+  wk.postMessage({ rgba, w, h, K: Number($("segK").value), Kd: Number($("segKd").value), minArea: Number($("segMin").value), smooth: Number($("segSmooth").value), barriera, seguire: barriera ? Math.max(seguire, st.mappaGemini ? 70 : 0) : 0 }, barriera ? [rgba.buffer, barriera.buffer] : [rgba.buffer]);
+}); }
+function sketchNelFormato(w, h) { // sketch allineato, riportato nel formato dell'originale
+  const SW = st.sketch.width, SH = st.sketch.height, sc = Number($("sc").value) / 100, ox = (SW - SW * sc) / 2 + Number($("dx").value) / 1000 * SW, oy = (SH - SH * sc) / 2 + Number($("dy").value) / 1000 * SH;
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(st.sketch, -ox * w / (SW * sc), -oy * h / (SH * sc), w / sc, h / sc); return c;
+}
+function disegnaSeg() {
+  const r = st.segRes; if (!r) return; const N = r.w * r.h, W = r.w;
+  // st.seg = colori prevalenti piatti (usati per rilevare i colori delle zone)
+  const c = document.createElement("canvas"); c.width = r.w; c.height = r.h; const g = c.getContext("2d"), id = g.createImageData(r.w, r.h), d = id.data;
+  const fineV = $("segVista").value === "fine";
+  for (let i = 0; i < N; i++) { const o = i * 4, col = fineV ? r.finePal[r.fineLab[i]] : r.palette[r.regColor[r.reg[i]]]; d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255; }
+  g.putImageData(id, 0, 0); st.seg = c;
+  // vista: colore prevalente + dettaglio di luce reale dentro il pezzo (realismo) + sketch sopra
+  const real = Number($("segReal").value) / 100, px = st.segPix && st.segPix.length === N * 4 ? st.segPix : null, bordi = $("segBordi").checked;
+  const v = document.createElement("canvas"); v.width = r.w; v.height = r.h; const vg = v.getContext("2d"), vd = vg.createImageData(r.w, r.h), q = vd.data;
+  let media = null; if (px && real > 0) { const s3 = new Float64Array(r.nReg * 3), n = new Float64Array(r.nReg); for (let i = 0; i < N; i++) { const k = r.reg[i]; s3[k * 3] += px[i * 4]; s3[k * 3 + 1] += px[i * 4 + 1]; s3[k * 3 + 2] += px[i * 4 + 2]; n[k]++; } media = s3.map((x, j) => x / Math.max(1, n[(j / 3) | 0])); }
+  for (let i = 0; i < N; i++) { const o = i * 4, x = i % W;
+    if (bordi && ((x < W - 1 && r.reg[i + 1] !== r.reg[i]) || (i + W < N && r.reg[i + W] !== r.reg[i]))) { q[o] = q[o + 1] = q[o + 2] = 40; q[o + 3] = 255; continue; }
+    for (let ch = 0; ch < 3; ch++) { let val = d[o + ch]; if (media) val += real * (px[o + ch] - media[r.reg[i] * 3 + ch]); q[o + ch] = val; } q[o + 3] = 255; }
+  vg.putImageData(vd, 0, 0);
+  if ($("segSketchSopra").checked && st.sketch) { vg.globalCompositeOperation = "multiply"; vg.drawImage(sketchNelFormato(r.w, r.h), 0, 0); vg.globalCompositeOperation = "source-over"; }
+  mostra("telaSeg", v); disegnaOverlay(); aggiorna();
+}
+$("btnSegLoc").onclick = segmentaLocale;
+let tSeg = null;
+["segK", "segKd", "segMin", "segSmooth", "segSegui"].forEach((id) => $(id).addEventListener("input", () => { $(id + "Out").textContent = $(id).value; salva(id, $(id).value); clearTimeout(tSeg); tSeg = setTimeout(segmentaLocale, 500); }));
+["segReal", "segSketchSopra"].forEach((id) => $(id).addEventListener("input", () => { if (id === "segReal") { $("segRealOut").textContent = $("segReal").value; salva("segReal", $("segReal").value); } disegnaSeg(); }));
+{ const v = leggi("segReal"); if (v) $("segReal").value = v; $("segRealOut").textContent = $("segReal").value; const a = leggi("autoSketch"); if (a !== null) $("autoSketch").checked = a === "true"; }
+$("autoSketch").addEventListener("change", () => salva("autoSketch", $("autoSketch").checked));
+const CONSIGLIATI = { segK: 120, segKd: 60, segMin: 20, segSmooth: 1, segSegui: 60 };
+$("btnConsigliati").onclick = () => { for (const [k, v] of Object.entries(CONSIGLIATI)) { $(k).value = v; $(k + "Out").textContent = v; salva(k, v); } $("statoPerf").textContent = "Valori consigliati ripristinati."; segmentaLocale(); };
+["segVista", "segBordi"].forEach((id) => $(id).addEventListener("input", () => { if (st.segRes) { disegnaSeg(); if (st.res && $("fonte").value === "seg") rilevaColori(); } }));
+["segK", "segKd", "segMin", "segSmooth", "segSegui"].forEach((id) => { const v = leggi(id); if (v) $(id).value = v; $(id + "Out").textContent = $(id).value; });
+
+// ---------- ✨ Perfeziona con Gemini (passo 3) ----------
+const MODELLI_TESTO = ["gemini-4-hydrogen", "gemini-3-flash", "gemini-2.5-flash"];
+async function chiamaGeminiTesto(prompt, immagini) {
+  const pref = leggi("modelloTestoOk"); const lista = pref ? [pref, ...MODELLI_TESTO.filter((m) => m !== pref)] : MODELLI_TESTO; let ultimo = "";
+  for (const model of lista) for (const api of ["interactions", "generateContent"]) {
+    const body = api === "interactions" ? { model, input: [{ type: "text", text: prompt }, ...immagini.map((d) => ({ type: "image", mime_type: "image/jpeg", data: d }))] }
+      : { contents: [{ role: "user", parts: [{ text: prompt }, ...immagini.map((d) => ({ inline_data: { mime_type: "image/jpeg", data: d } }))] }], generationConfig: { responseMimeType: "application/json" } };
+    const r = await fetch(`/api/gemini?model=${encodeURIComponent(model)}&api=${api}`, { method: "POST", headers: { "content-type": "application/json", "x-app-password": $("pw").value }, body: JSON.stringify(body) });
+    const txt = await r.text(); let d = null; try { d = JSON.parse(txt); } catch (e) {}
+    if (r.status === 401) throw new Error("Password errata");
+    if (!r.ok) { ultimo = `[${model} / ${api}] HTTP ${r.status}: ${(d && (d.error?.message || d.error)) || txt.slice(0, 200)}`; continue; }
+    const t = estraiImmagine(d).testo; const m = t && t.match(/\{[\s\S]*\}/);
+    if (m) { try { const j = JSON.parse(m[0]); salva("modelloTestoOk", model); return j; } catch (e) { ultimo = "risposta non in formato JSON"; } } else ultimo = "risposta vuota";
+  }
+  throw new Error(ultimo || "nessun modello di testo disponibile");
+}
+const PROMPT_CONSULENTE = (stato) => `You are an expert in paint-by-numbers and coloring-book design. Image 1 is the original artwork. Image 2 is the current automatic segmentation (each piece filled with the dominant real color of the original; the colors are never changed). ${stato.sketch ? "Image 3 is the line drawing (sketch) that the pieces can follow." : ""}
+Top priority: the result must look as close as possible to the original (realistic), never blotchy or posterized. Goal: pieces that follow the natural shapes of the artwork, faithful to the original; more and smaller pieces on faces, eyes, lips and hands; fewer and larger pieces in uniform areas like sky and background; no messy tiny fragments; a palette that is comfortable to color.
+Current settings: colors=${stato.K} (2-500, number of real colors), detail=${stato.Kd} (2-120, number of base shapes), min_piece=${stato.min} (2-400 pixels, at ${stato.w}x${stato.h}), smoothing=${stato.smooth} (0-4), follow_sketch=${stato.segui} (0-100). Result: ${stato.pezzi} pieces, ${stato.colori} colors.
+Look at image 2 critically compared with image 1 and suggest improved settings. Answer ONLY with JSON: {"colors":int,"detail":int,"min_piece":int,"smoothing":int,"follow_sketch":int,"reason":"one short sentence in Italian"}`;
+async function perfezionaConGemini() {
+  if (!st.base || !st.segRes) return log("Prima carica l'opera e attendi la segmentazione.", "err");
+  const btn = $("btnPerfeziona"); btn.disabled = true; $("statoPerf").textContent = "Gemini sta analizzando…";
+  try {
+    if ($("perfContorni").checked) { await mappaContorniGemini(); }
+    const r = st.segRes, stato = { sketch: !!st.sketch, K: $("segK").value, Kd: $("segKd").value, min: $("segMin").value, smooth: $("segSmooth").value, segui: $("segSegui").value, w: r.w, h: r.h, pezzi: r.nReg, colori: r.kFine };
+    const imgs = [aJpegB64(st.base, 1024), aJpegB64(st.seg, 1024)]; if (st.sketch) imgs.push(aJpegB64(canvasDa(st.sketch), 1024));
+    const j = await chiamaGeminiTesto(PROMPT_CONSULENTE(stato), imgs);
+    const metti = (id, v, a, b) => { if (v == null || isNaN(v)) return; v = Math.round(Math.max(a, Math.min(b, Number(v)))); $(id).value = v; $(id + "Out").textContent = v; salva(id, v); };
+    // limiti che mantengono il risultato fedele all'originale
+    metti("segK", j.colors, 24, 300); metti("segKd", j.detail, 20, 110); metti("segMin", j.min_piece, 4, 120); metti("segSmooth", j.smoothing, 0, 2); metti("segSegui", j.follow_sketch, 20, 95);
+    $("statoPerf").textContent = "✓ " + (j.reason || "impostazioni aggiornate"); log(`Gemini consiglia: colori ${$("segK").value}, dettaglio ${$("segKd").value}, pezzo minimo ${$("segMin").value}, morbidezza ${$("segSmooth").value}, segui sketch ${$("segSegui").value}. ${j.reason || ""}`, "ok");
+    await segmentaLocale();
+  } catch (e) { $("statoPerf").innerHTML = '<span class="err">✕ Gemini non ha risposto: ' + e.message.replace(/</g, "&lt;").slice(0, 220) + "</span>"; log("Perfeziona con Gemini — errore: " + e.message, "err"); }
+  finally { btn.disabled = false; }
+}
+// mappa delle forme disegnata da Gemini: ne uso SOLO i confini (allineati all'originale) come linee guida per i pezzi
+const PROMPT_MAPPA = `Transform image 1 into a clean region map for a paint-by-numbers kit: divide it into flat-color regions that follow the natural shapes (face planes, eyes, lips, hair locks, clothing folds, sky and landscape areas), with thin continuous black outlines around every region. Keep everything else exactly the same: identical framing, scale and position of every element, so the map overlays the original precisely. Flat colors, no gradients, no text, no border.`;
+async function mappaContorniGemini() {
+  $("statoPerf").textContent = "Gemini disegna la mappa dei contorni…";
+  const url = await chiamaGemini(PROMPT_MAPPA, [aJpegB64(st.base)]); const im = await caricaImg(url);
+  // confini = linee scure + salti di colore
+  const W = Math.min(1600, im.width), H = Math.round(im.height * W / im.width), d = canvasDa(im, W, H).getContext("2d").getImageData(0, 0, W, H).data;
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"), o = g.createImageData(W, H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x, p = i * 4; let bordo = 0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2] < 90;
+    if (!bordo && x < W - 1) { const q = p + 4; bordo = Math.abs(d[p] - d[q]) + Math.abs(d[p + 1] - d[q + 1]) + Math.abs(d[p + 2] - d[q + 2]) > 60; }
+    if (!bordo && y < H - 1) { const q = p + W * 4; bordo = Math.abs(d[p] - d[q]) + Math.abs(d[p + 1] - d[q + 1]) + Math.abs(d[p + 2] - d[q + 2]) > 60; }
+    const v = bordo ? 0 : 255; o.data[p] = o.data[p + 1] = o.data[p + 2] = v; o.data[p + 3] = 255; }
+  g.putImageData(o, 0, 0);
+  // allineamento della mappa all'originale (stesso metodo dello sketch)
+  const al = await new Promise((fine) => { const sk = canvasDa(c, W, H).getContext("2d").getImageData(0, 0, W, H).data, orig = canvasDa(st.base, W, H).getContext("2d").getImageData(0, 0, W, H).data, wk = new Worker("colora-worker.js");
+    wk.onmessage = (e) => { if (e.data.tipo === "progresso") return; wk.terminate(); fine(e.data.tipo === "allineato" ? e.data.res : null); }; wk.postMessage({ azione: "allinea", sk, orig, W, H }, [sk.buffer, orig.buffer]); });
+  st.mappaGemini = { img: c, sc: al && al.qualita > al.qualitaIniziale + 0.005 ? al.scala : 1, dx: al && al.qualita > al.qualitaIniziale + 0.005 ? al.dx : 0, dy: al && al.qualita > al.qualitaIniziale + 0.005 ? al.dy : 0 };
+  log("Mappa dei contorni di Gemini pronta: i suoi confini guidano i pezzi (colori sempre dall'originale).", "ok");
+}
+$("btnPerfeziona").onclick = perfezionaConGemini;
+$("btnTogliMappa").onclick = () => { st.mappaGemini = null; log("Contorni di Gemini rimossi."); segmentaLocale(); };
+
+$("btnColGemini").onclick = async () => {
+  if (await passoGemini("telaCol", "colGemini", $("p3").value, [aJpegB64(canvasDa(st.sketch)), aJpegB64(st.base)], "Colorazione Gemini")) { st.cvCol = $("telaCol").querySelector("canvas"); aggiorna(); }
+};
+
+// caricamento manuale di sketch / segmentata (es. fatti nell'app Gemini)
+function caricaManuale(inputId, chiave, telaId) {
+  $(inputId).onchange = (e) => { const f = e.target.files[0]; if (!f) return; const fr = new FileReader();
+    fr.onload = async () => { st[chiave] = await caricaImg(fr.result); mostra(telaId, canvasDa(st[chiave])); if (chiave === "sketch") { st.variantiSketch = null; mostraVarianti(); st.res = null; disegnaOverlay(); allineaAuto().then(() => segmentaLocale()); } log(`Caricato ${f.name} come ${chiave}.`, "ok"); aggiorna(); };
+    fr.readAsDataURL(f); e.target.value = ""; };
+}
+caricaManuale("fileSketch", "sketch", "telaSketch"); caricaManuale("fileSeg", "seg", "telaSeg");
+$("btnCaricaSketch").onclick = () => $("fileSketch").click(); $("btnCaricaSeg").onclick = () => $("fileSeg").click();
+
+// ---------- sovrapposizione ----------
+function dimLavoro() { const s = Math.min(1, 1600 / Math.max(st.sketch.width, st.sketch.height)); return { W: Math.round(st.sketch.width * s), H: Math.round(st.sketch.height * s) }; }
+function fonteAllineata(W, H) { // immagine colori disegnata sotto lo sketch con sposta/scala
+  const src = $("fonte").value === "seg" && st.seg ? st.seg : st.base;
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+  const sc = Number($("sc").value) / 100, dx = Number($("dx").value) / 1000 * W, dy = Number($("dy").value) / 1000 * H;
+  const w = W * sc, h = H * sc; g.drawImage(src, (W - w) / 2 + dx, (H - h) / 2 + dy, w, h); return c;
+}
+function disegnaOverlay() {
+  ["opac", "dx", "dy", "sc"].forEach((id) => ($(id + "Out").textContent = id === "sc" ? $(id).value + "%" : id === "opac" ? $(id).value + "%" : (Number($(id).value) / 10).toFixed(1) + "%"));
+  if (!st.base || !st.sketch) { aggiorna(); return; }
+  const { W, H } = dimLavoro(); const c = fonteAllineata(W, H), g = c.getContext("2d");
+  g.globalAlpha = Number($("opac").value) / 100; g.globalCompositeOperation = "multiply"; g.drawImage(st.sketch, 0, 0, W, H);
+  mostra("telaOver", c); aggiorna();
+}
+["opac", "dx", "dy", "sc", "fonte"].forEach((id) => $(id).addEventListener("input", disegnaOverlay));
+$("btnAzzera").onclick = () => { $("dx").value = 0; $("dy").value = 0; $("sc").value = 100; disegnaOverlay(); };
+
+// ---------- passo 3: colori prevalenti (Web Worker) ----------
+function matiteAttive() {
+  const t = $("tavolozza").value; if (t === "libera") return null;
+  if (t === "mia") { const m = leggiJSON("mia", null); if (!m || !m.sel || !m.sel.length) return null; const cat = MATITE[m.marca]; return m.sel.map((c) => cat.colori.find((x) => x.cod === c)).filter(Boolean); }
+  return MATITE[t].colori;
+}
+const hexRgb = (h) => [0, 2, 4].map((i) => parseInt(h.replace("#", "").substr(i, 2), 16));
+function rilevaColori() { return new Promise((fine) => {
+  if (!st.sketch || !st.base) return fine(false);
+  if (st.worker) st.worker.terminate();
+  const { W, H } = dimLavoro();
+  const sk = canvasDa(st.sketch, W, H).getContext("2d").getImageData(0, 0, W, H).data;
+  const src = fonteAllineata(W, H).getContext("2d").getImageData(0, 0, W, H).data;
+  st.Y = new Float32Array(W * H); for (let i = 0; i < W * H; i++) st.Y[i] = 0.299 * src[i * 4] + 0.587 * src[i * 4 + 1] + 0.114 * src[i * 4 + 2];
+  lavoro("telaCol", true);
+  const wk = new Worker("colora-worker.js"); st.worker = wk;
+  wk.onmessage = (e) => { const m = e.data;
+    if (m.tipo === "progresso") $("caricaCol").textContent = m.msg;
+    else { wk.terminate(); st.worker = null; lavoro("telaCol", false);
+      if (m.tipo === "errore") { log("Colori — errore: " + m.msg, "err"); return fine(false); }
+      st.res = m.res; st.res.matite = st.matiteUsate; st.colGemini = null; disegnaRisultati();
+      $("statoColori").textContent = `✓ ${m.res.palette.length} colori rilevati in ${m.res.R} zone dello sketch — vai al passo 4.`; aggiornaColora();
+      log(`Colori rilevati: ${m.res.R} zone, ${m.res.palette.length} colori${m.res.nPonti ? `, ${m.res.nPonti} linee aperte collegate` : ""} (${(m.res.ms / 1000).toFixed(1)} s).`, "ok"); fine(true); } };
+  wk.postMessage({ sk, src, W, H, soglia: Number($("soglia").value), chiusura: Number($("chiusura").value), minArea: Number($("minArea").value), K: Number($("kNum").value), toni: Number($("toni").value), gap: Number($("gap").value), matite: (st.matiteUsate = matiteAttive()) ? st.matiteUsate.map((c) => hexRgb(c.hex)) : null }, [sk.buffer, src.buffer]);
+}); }
+function disegnaColorata() {
+  const r = st.res, c = document.createElement("canvas"); c.width = r.W; c.height = r.H; const g = c.getContext("2d"), id = g.createImageData(r.W, r.H), d = id.data, linee = $("lineeSopra").checked;
+  const morbida = $("vista").value === "morbida" && st.Y && st.Y.length === r.W * r.H;
+  let media = null;
+  if (morbida) { const s = new Float64Array(r.R), n = new Float64Array(r.R); for (let i = 0; i < r.W * r.H; i++) { s[r.full[i]] += st.Y[i]; n[r.full[i]]++; } media = new Float32Array(r.R); for (let k = 0; k < r.R; k++) media[k] = n[k] ? s[k] / n[k] : 128; }
+  for (let i = 0; i < r.W * r.H; i++) { const o = i * 4; if (linee && (r.linea[i] || r.ponti[i])) { d[o] = d[o + 1] = d[o + 2] = 25; } else { const z = r.full[i], col = r.palette[r.regColor[z]] || [255, 255, 255];
+      if (morbida) { const f = Math.pow(Math.max(0.05, st.Y[i]) / Math.max(1, media[z]), 0.85); d[o] = Math.min(255, col[0] * f); d[o + 1] = Math.min(255, col[1] * f); d[o + 2] = Math.min(255, col[2] * f); }
+      else { d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; } } d[o + 3] = 255; }
+  g.putImageData(id, 0, 0); return c;
+}
+function disegnaNumerata() {
+  const r = st.res, c = canvasDa(st.sketch, r.W, r.H), g = c.getContext("2d");
+  const lt = $("lineeToni").value, grigi = $("stilePagina").value === "grigi" && st.Y && st.Y.length === r.W * r.H;
+  if (true) {
+    const id = g.getImageData(0, 0, r.W, r.H), d = id.data;
+    for (let i = 0; i < r.W * r.H; i++) { const o = i * 4, x = i % r.W, y = (i / r.W) | 0;
+      if (grigi) { const v = 255 - (255 - st.Y[i]) * 0.38; d[o] = d[o] * v / 255; d[o + 1] = d[o + 1] * v / 255; d[o + 2] = d[o + 2] * v / 255; }
+      if (r.ponti[i]) { d[o] = d[o + 1] = d[o + 2] = 35; continue; }
+      if (r.bordoTono[i] && !r.linea[i] && lt !== "nessuna" && (lt === "grigio" || ((x + y) >> 2) % 2 === 0)) { const v = lt === "grigio" ? 175 : 140; d[o] = Math.min(d[o], v); d[o + 1] = Math.min(d[o + 1], v); d[o + 2] = Math.min(d[o + 2], v); } }
+    g.putImageData(id, 0, 0);
+  }
+  if ($("numeri").checked) {
+    const fsMax = Number($("fsMax").value); g.fillStyle = "#7a7a7a"; g.textAlign = "center"; g.textBaseline = "middle";
+    for (let k = 0; k < r.R; k++) { const d = r.pos[k * 3 + 2], num = String(r.regColor[k] + 1); const fs = Math.min(fsMax, d * (num.length > 2 ? 0.75 : 0.95)); if (fs < 6) continue;
+      g.font = `${fs.toFixed(1)}px system-ui, sans-serif`; g.fillText(num, r.pos[k * 3] + 0.5, r.pos[k * 3 + 1] + 0.5); }
+  }
+  return c;
+}
+function nomeMatita(i) { const r = st.res; return r && r.matite && r.matitaIdx && r.matitaIdx.length ? r.matite[r.matitaIdx[i]] : null; }
+function disegnaLegenda() {
+  const r = st.res, box = $("colori"), tot = r.counts.reduce((a, b) => a + b, 0); box.innerHTML = "";
+  r.palette.forEach((c, i) => { const el = document.createElement("div"); el.className = "col"; el.title = (100 * r.counts[i] / tot).toFixed(1) + "% dell'immagine"; const mt = nomeMatita(i); el.innerHTML = `<b>${i + 1}</b><i style="background:${hex(c)}"></i><span>${mt ? `${mt.cod}<small>${mt.nome}</small>` : hex(c)}</span>`; box.appendChild(el); });
+  $("infoLeg").textContent = `— ${r.palette.length} colori, ${r.R} zone`;
+}
+function disegnaRisultati() { if (!st.res) return; st.cvCol = disegnaColorata(); mostra("telaCol", st.cvCol); st.cvNum = disegnaNumerata(); mostra("telaNum", st.cvNum); disegnaLegenda(); aggiorna(); }
+$("btnColori").onclick = rilevaColori;
+$("lineeSopra").addEventListener("input", () => { if (st.res) { st.cvCol = disegnaColorata(); mostra("telaCol", st.cvCol); } });
+["numeri", "fsMax"].forEach((id) => $(id).addEventListener("input", () => { $("fsMaxOut").textContent = $("fsMax").value; if (st.res) { st.cvNum = disegnaNumerata(); mostra("telaNum", st.cvNum); } }));
+let timer = null; const ricalcola = () => { etichette(); if (st.res) { clearTimeout(timer); timer = setTimeout(rilevaColori, 450); } };
+$("kRange").oninput = () => { $("kNum").value = $("kRange").value; salva("k", $("kRange").value); ricalcola(); };
+$("kNum").onchange = () => { const v = Math.max(2, Math.min(500, Number($("kNum").value) || 2)); $("kNum").value = v; $("kRange").value = v; salva("k", v); ricalcola(); };
+["soglia", "chiusura", "minArea", "toni", "gap", "tavolozza"].forEach((id) => $(id).addEventListener("input", () => { salva(id, $(id).value); ricalcola(); }));
+$("vista").addEventListener("input", () => { salva("vista", $("vista").value); if (st.res) { st.cvCol = disegnaColorata(); mostra("telaCol", st.cvCol); } });
+["stilePagina", "lineeToni"].forEach((id) => $(id).addEventListener("input", () => { salva(id, $(id).value); if (st.res) { st.cvNum = disegnaNumerata(); mostra("telaNum", st.cvNum); } }));
+function etichette() { ["soglia", "chiusura", "minArea", "toni", "gap"].forEach((id) => ($(id + "Out").textContent = $(id).value)); $("fsMaxOut").textContent = $("fsMax").value; }
+
+// ---------- download / stampa ----------
+function scarica(cv, nome) { cv.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }, "image/png"); }
+function stampa(html, orient) { const w = window.open("", "_blank"); if (!w) return log("Il browser ha bloccato la finestra di stampa: consenti i popup.", "err");
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${st.nome}</title><style>@page{size:A4 ${orient};margin:8mm}html,body{margin:0}body{font-family:system-ui,sans-serif}
+  .pag{height:100vh;display:flex;align-items:center;justify-content:center}.pag img{max-width:100%;max-height:100vh;object-fit:contain}
+  .leg{display:grid;grid-template-columns:repeat(6,1fr);gap:4px 10px;font-size:10px}.leg div{display:flex;align-items:center;gap:5px}.leg b{min-width:22px;text-align:right}
+  .leg i{width:16px;height:16px;border:1px solid #999;flex:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  w.document.close(); }
+const stampaImg = (cv) => stampa(`<div class="pag"><img src="${cv.toDataURL("image/png")}"></div>`, cv.width > cv.height ? "landscape" : "portrait");
+$("dlSketch").onclick = () => scarica(canvasDa(st.sketch), st.nome + "_sketch.png");
+$("dlSeg").onclick = () => scarica(canvasDa(st.seg), st.nome + "_segmentata.png");
+$("dlCol").onclick = () => scarica(st.cvCol, st.nome + "_colorata.png");
+$("dlNum").onclick = () => scarica(st.cvNum, st.nome + "_da_colorare.png");
+$("prCol").onclick = () => stampaImg(st.cvCol); $("prNum").onclick = () => stampaImg(st.cvNum);
+$("prLeg").onclick = () => { const r = st.res; stampa(`<h3>${st.nome} — legenda colori (${r.palette.length})</h3><div class="leg">${r.palette.map((c, i) => { const m = nomeMatita(i); return `<div><b>${i + 1}</b><i style="background:${hex(c)}"></i>${m ? m.cod + " " + m.nome : hex(c)}</div>`; }).join("")}</div>`, "portrait"); };
+
+// ---------- allineamento automatico ----------
+function allineaAuto() { return new Promise((fine) => {
+  if (!st.base || !st.sketch) return fine(false);
+  const { W, H } = dimLavoro(); const sk = canvasDa(st.sketch, W, H).getContext("2d").getImageData(0, 0, W, H).data;
+  const src = $("fonte").value === "seg" && st.seg ? st.seg : st.base; const orig = canvasDa(src, W, H).getContext("2d").getImageData(0, 0, W, H).data;
+  $("statoAllinea").textContent = "allineamento in corso…";
+  const wk = new Worker("colora-worker.js");
+  wk.onmessage = (e) => { const m = e.data; if (m.tipo === "progresso") return; wk.terminate();
+    if (m.tipo !== "allineato") { $("statoAllinea").textContent = ""; log("Allineamento non riuscito: " + (m.msg || ""), "err"); return fine(false); }
+    const a = m.res; if (a.qualita <= a.qualitaIniziale + 0.005) { $("dx").value = 0; $("dy").value = 0; $("sc").value = 100; disegnaOverlay(); $("statoAllinea").textContent = "già allineato ✓"; return fine(true); }
+    $("sc").value = Math.max(90, Math.min(110, Math.round(a.scala * 200) / 2)); $("dx").value = Math.max(-60, Math.min(60, Math.round(a.dx * 1000))); $("dy").value = Math.max(-60, Math.min(60, Math.round(a.dy * 1000)));
+    disegnaOverlay(); const gu = Math.round(100 * (a.qualita - a.qualitaIniziale) / Math.max(0.01, Math.abs(a.qualitaIniziale)));
+    $("statoAllinea").textContent = `corretto ✓ (corrispondenza +${gu}%)`; log(`Allineamento automatico: scala ${(a.scala * 100).toFixed(1)}%, spostamento ${(a.dx * 100).toFixed(1)}% / ${(a.dy * 100).toFixed(1)}%.`, "ok"); fine(true); };
+  wk.postMessage({ azione: "allinea", sk, orig, W, H }, [sk.buffer, orig.buffer]);
+}); }
+$("btnAllinea").onclick = async () => { await allineaAuto(); segmentaLocale(); };
+
+// ---------- la mia scatola di matite ----------
+function disegnaMia() {
+  const m = leggiJSON("mia", { marca: "faber120", sel: [] }); $("miaMarca").value = m.marca; const cat = MATITE[m.marca];
+  $("miaLista").innerHTML = cat.colori.map((c) => `<label><input type="checkbox" value="${c.cod}" ${m.sel.includes(c.cod) ? "checked" : ""}><i style="background:#${c.hex}"></i>${c.cod} ${c.nome}</label>`).join("");
+  $("miaConta").textContent = `${m.sel.length} matite scelte`;
+}
+function salvaMia() { const sel = [...$("miaLista").querySelectorAll("input:checked")].map((x) => x.value); salvaJSON("mia", { marca: $("miaMarca").value, sel }); $("miaConta").textContent = `${sel.length} matite scelte`; if ($("tavolozza").value === "mia") ricalcola(); }
+$("miaLista").addEventListener("change", salvaMia);
+$("miaMarca").onchange = () => { salvaJSON("mia", { marca: $("miaMarca").value, sel: [] }); disegnaMia(); };
+$("miaTutte").onclick = () => { $("miaLista").querySelectorAll("input").forEach((x) => (x.checked = true)); salvaMia(); };
+$("miaNessuna").onclick = () => { $("miaLista").querySelectorAll("input").forEach((x) => (x.checked = false)); salvaMia(); };
+$("tavolozza").addEventListener("input", () => { if ($("tavolozza").value === "mia") $("boxMia").open = true; });
+
+// ---------- SVG vettoriale ----------
+// contorni di ogni etichetta come percorsi chiusi lungo i bordi dei pixel: zone vicine combaciano senza fessure
+function tracciaContorni(lab, W, H, nLab) {
+  const per = Array.from({ length: nLab }, () => []), V = (x, y) => y * (W + 1) + x;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x, a = lab[i]; if (a < 0) continue; const e = per[a];
+    if (y === 0 || lab[i - W] !== a) e.push(V(x + 1, y), V(x, y));
+    if (y === H - 1 || lab[i + W] !== a) e.push(V(x, y + 1), V(x + 1, y + 1));
+    if (x === 0 || lab[i - 1] !== a) e.push(V(x, y), V(x, y + 1));
+    if (x === W - 1 || lab[i + 1] !== a) e.push(V(x + 1, y + 1), V(x + 1, y)); }
+  return per.map((e) => {
+    if (!e.length) return ""; const out = new Map();
+    for (let k = 0; k < e.length; k += 2) { const l = out.get(e[k]); if (l) l.push(k); else out.set(e[k], [k]); }
+    const usato = new Uint8Array(e.length / 2); const parti = [];
+    for (let k0 = 0; k0 < e.length; k0 += 2) { if (usato[k0 / 2]) continue; const pts = []; let k = k0;
+      while (k >= 0 && !usato[k / 2]) { usato[k / 2] = 1; pts.push(e[k]); const l = out.get(e[k + 1]); k = -1; if (l) for (const c of l) if (!usato[c / 2]) { k = c; break; } }
+      const P = pts.map((v) => [v % (W + 1), (v / (W + 1)) | 0]), Q = [];
+      for (let j = 0; j < P.length; j++) { const a = P[(j - 1 + P.length) % P.length], b = P[j], c = P[(j + 1) % P.length]; if ((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]) !== 0) Q.push(b); }
+      if (Q.length > 2) parti.push("M" + Q.map((p) => p[0] + " " + p[1]).join("L") + "Z"); }
+    return parti.join(""); });
+}
+function creaSVG(tipo) {
+  const r = st.res, W = r.W, H = r.H, N = W * H;
+  const lin = new Int32Array(N); for (let i = 0; i < N; i++) lin[i] = r.linea[i] || r.ponti[i] ? 0 : -1;
+  const dLinee = tracciaContorni(lin, W, H, 1)[0];
+  const parti = [];
+  if (tipo === "colorata") {
+    const lab = new Int32Array(N); for (let i = 0; i < N; i++) lab[i] = r.regColor[r.full[i]];
+    tracciaContorni(lab, W, H, r.palette.length).forEach((d, k) => { if (d) parti.push(`<path fill="${hex(r.palette[k])}" d="${d}"/>`); });
+  } else {
+    const lab = new Int32Array(N); for (let i = 0; i < N; i++) lab[i] = r.full[i];
+    tracciaContorni(lab, W, H, r.R).forEach((d, k) => { if (d) parti.push(`<path id="z${k}" data-colore="${r.regColor[k] + 1}" fill="#fff" stroke="#b0b0b0" stroke-width="0.6" d="${d}"/>`); });
+  }
+  const testi = [];
+  if (tipo !== "colorata" && $("numeri").checked) { const fsMax = Number($("fsMax").value);
+    for (let k = 0; k < r.R; k++) { const dd = r.pos[k * 3 + 2], num = String(r.regColor[k] + 1), fs = Math.min(fsMax, dd * (num.length > 2 ? 0.75 : 0.95)); if (fs < 6) continue;
+      testi.push(`<text x="${(r.pos[k * 3] + 0.5).toFixed(1)}" y="${(r.pos[k * 3 + 1] + 0.5).toFixed(1)}" font-size="${fs.toFixed(1)}">${num}</text>`); } }
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">\n<title>${st.nome} — ${tipo === "colorata" ? "colorata" : "da colorare"}</title>\n<rect width="${W}" height="${H}" fill="#fff"/>\n<g id="zone">\n${parti.join("\n")}\n</g>\n<path id="linee" fill="#111" d="${dLinee}"/>\n<g id="numeri" fill="#777" font-family="Arial, sans-serif" text-anchor="middle" dominant-baseline="central">${testi.join("")}</g>\n</svg>`;
+}
+function scaricaBlob(blob, nome) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+$("dlSvg").onclick = () => { log("Creo l'SVG…"); setTimeout(() => { const t = creaSVG("da_colorare"); scaricaBlob(new Blob([t], { type: "image/svg+xml" }), st.nome + "_da_colorare.svg"); log(`SVG creato (${(t.length / 1048576).toFixed(1)} MB).`, "ok"); }, 30); };
+
+// ---------- PDF A4 (pagina da colorare, legenda, riferimento a colori) ----------
+function canvasLegenda() {
+  const r = st.res, W = 1240, H = 1754, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.fillStyle = "#111"; g.font = "bold 34px Georgia, serif"; g.fillText(st.nome + " — legenda colori", 70, 100);
+  g.font = "18px Arial, sans-serif"; g.fillStyle = "#666"; g.fillText(`${r.palette.length} colori · ${r.R} zone${r.matite ? " · " + $("tavolozza").selectedOptions[0].text : ""}`, 70, 132);
+  const col = r.palette.length > 60 ? 3 : 2, cw = (W - 140) / col, rh = Math.min(48, (H - 200) / Math.ceil(r.palette.length / col));
+  r.palette.forEach((p, i) => { const x = 70 + (i % col) * cw, y = 170 + Math.floor(i / col) * rh, m = nomeMatita(i);
+    g.fillStyle = hex(p); g.fillRect(x + 50, y, rh * 0.8, rh * 0.8); g.strokeStyle = "#999"; g.strokeRect(x + 50, y, rh * 0.8, rh * 0.8);
+    g.fillStyle = "#111"; g.font = `bold ${Math.round(rh * 0.42)}px Arial`; g.textAlign = "right"; g.fillText(String(i + 1), x + 40, y + rh * 0.55); g.textAlign = "left";
+    g.font = `${Math.round(rh * 0.36)}px Arial`; g.fillText(m ? `${m.cod} ${m.nome}` : hex(p), x + 60 + rh * 0.8, y + rh * 0.52); });
+  return c;
+}
+async function creaPDF(pagine) { // ogni canvas diventa una pagina A4 (immagine JPEG adattata con margini)
+  const enc = new TextEncoder(), parti = [], off = []; let len = 0;
+  const add = (x) => { const u = typeof x === "string" ? enc.encode(x) : x; parti.push(u); len += u.length; };
+  const obj = (n, corpo) => { off[n] = len; add(`${n} 0 obj\n`); corpo(); add("\nendobj\n"); };
+  add("%PDF-1.4\n");
+  const n = pagine.length, kids = pagine.map((_, i) => `${3 + i * 3} 0 R`).join(" ");
+  obj(1, () => add("<< /Type /Catalog /Pages 2 0 R >>")); obj(2, () => add(`<< /Type /Pages /Kids [${kids}] /Count ${n} >>`));
+  for (let i = 0; i < n; i++) {
+    const cv = pagine[i], jpg = await pngBytes(cv, "image/jpeg", 0.92), A4w = 595.28, A4h = 841.89, m = 28;
+    const land = cv.width > cv.height, pw = land ? A4h : A4w, ph = land ? A4w : A4h, s = Math.min((pw - 2 * m) / cv.width, (ph - 2 * m) / cv.height);
+    const w = cv.width * s, h = cv.height * s, x = (pw - w) / 2, y = (ph - h) / 2, p = 3 + i * 3;
+    const cs = `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im${i} Do Q`;
+    obj(p, () => add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw.toFixed(2)} ${ph.toFixed(2)}] /Resources << /XObject << /Im${i} ${p + 1} 0 R >> >> /Contents ${p + 2} 0 R >>`));
+    obj(p + 1, () => { add(`<< /Type /XObject /Subtype /Image /Width ${cv.width} /Height ${cv.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`); add(jpg); add("\nendstream"); });
+    obj(p + 2, () => add(`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`));
+  }
+  const tot = 3 + n * 3, xref = len; let x = `xref\n0 ${tot}\n0000000000 65535 f \n`; for (let k = 1; k < tot; k++) x += String(off[k]).padStart(10, "0") + " 00000 n \n";
+  add(x + `trailer\n<< /Size ${tot} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(parti, { type: "application/pdf" });
+}
+async function pdfOpera() { return creaPDF([st.cvNum || disegnaNumerata(), canvasLegenda(), st.cvCol || disegnaColorata()]); }
+$("dlPdf").onclick = async () => { log("Creo il PDF…"); const b = await pdfOpera(); scaricaBlob(b, st.nome + ".pdf"); log(`PDF creato: 3 pagine A4 (${(b.size / 1048576).toFixed(1)} MB).`, "ok"); };
+
+// ---------- galleria (IndexedDB) ----------
+function db() { return new Promise((ok, ko) => { const r = indexedDB.open("arte-da-colorare", 2); r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains("opere")) d.createObjectStore("opere", { keyPath: "id" }); if (!d.objectStoreNames.contains("app")) d.createObjectStore("app", { keyPath: "id" }); }; r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }); }
+async function dbOp(modo, fn) { const d = await db(); return new Promise((ok, ko) => { const t = d.transaction("opere", modo), s = t.objectStore("opere"), r = fn(s); t.oncomplete = () => ok(r && r.result); t.onerror = () => ko(t.error); }); }
+const blobDi = (cv, tipo = "image/png", q) => new Promise((ok) => cv.toBlob(ok, tipo, q));
+const IMPOST = ["soglia", "chiusura", "gap", "minArea", "toni", "kNum", "tavolozza", "dx", "dy", "sc", "fonte", "vista", "stilePagina", "lineeToni"];
+async function salvaGalleria(silenzioso) {
+  if (!st.base) return; if (!st.idOpera) st.idOpera = "o" + Date.now().toString(36);
+  const th = document.createElement("canvas"), src = st.sketch || st.base, k = 260 / Math.max(src.width, src.height); th.width = Math.round(src.width * k); th.height = Math.round(src.height * k);
+  const tg = th.getContext("2d"); tg.fillStyle = "#fff"; tg.fillRect(0, 0, th.width, th.height); tg.drawImage(src, 0, 0, th.width, th.height);
+  const rec = { id: st.idOpera, nome: st.nome, data: Date.now(), ratio: st.ratio, mini: th.toDataURL("image/jpeg", 0.8),
+    base: await blobDi(st.base, "image/jpeg", 0.93), sketch: st.sketch ? await blobDi(canvasDa(st.sketch)) : null, seg: st.seg ? await blobDi(canvasDa(st.seg)) : null,
+    impostazioni: Object.fromEntries(IMPOST.map((id) => [id, $(id).value])), prompt: { p1: $("p1").value, p2: $("p2").value, p3: $("p3").value } };
+  try { await dbOp("readwrite", (s) => s.put(rec)); if (!silenzioso) log(`"${st.nome}" salvata in galleria.`, "ok"); disegnaGalleria(); } catch (e) { log("Salvataggio in galleria non riuscito: " + e.message, "err"); }
+}
+async function disegnaGalleria() {
+  let lista = []; try { lista = (await dbOp("readonly", (s) => s.getAll())) || []; } catch (e) {}
+  lista.sort((a, b) => b.data - a.data);
+  $("galleria").innerHTML = lista.length ? "" : '<div class="nota">Nessuna opera salvata.</div>';
+  for (const o of lista) { const f = document.createElement("figure");
+    f.innerHTML = `<img src="${o.mini}" title="Apri"><div><b></b><br>${new Date(o.data).toLocaleString("it")}${o.sketch ? "" : " · senza sketch"}</div><div class="azioni"><button class="sec" data-a="apri">Apri</button><button class="sec" data-a="del">Elimina</button></div>`;
+    f.querySelector("b").textContent = o.nome;
+    f.querySelector("img").onclick = () => apriDaGalleria(o.id); f.querySelector("[data-a=apri]").onclick = () => apriDaGalleria(o.id);
+    f.querySelector("[data-a=del]").onclick = async () => { await dbOp("readwrite", (s) => s.delete(o.id)); disegnaGalleria(); };
+    $("galleria").appendChild(f); }
+}
+const imgDaBlob = (b) => (b ? caricaImg(URL.createObjectURL(b)) : null);
+async function apriDaGalleria(id) {
+  const o = await dbOp("readonly", (s) => s.get(id)); if (!o) return;
+  st.idOpera = o.id; st.nome = o.nome; st.crop = null; st.res = null; st.colGemini = null; st.variantiSketch = null; mostraVarianti();
+  st.img = await imgDaBlob(o.base); preparaBase();
+  st.sketch = await imgDaBlob(o.sketch); st.seg = await imgDaBlob(o.seg);
+  if (st.sketch) mostra("telaSketch", canvasDa(st.sketch)); if (st.seg) mostra("telaSeg", canvasDa(st.seg));
+  for (const [k, v] of Object.entries(o.impostazioni || {})) if ($(k)) $(k).value = v; $("kRange").value = $("kNum").value; etichette(); disegnaOverlay();
+  log(`Aperta "${o.nome}" dalla galleria.`, "ok"); await segmentaLocale(); window.scrollTo({ top: 0, behavior: "smooth" });
+}
+$("btnSalvaGal").onclick = () => salvaGalleria(false);
+
+// ---------- elaborazione in serie ----------
+function caricaFileOriginale(f) { return new Promise((ok) => { const fr = new FileReader(); fr.onload = async () => { try { st.img = await caricaImg(fr.result); } catch (e) { return ok(false); }
+  st.nome = f.name.replace(/\.[^.]+$/, ""); st.idOpera = null; st.crop = null; st.sketch = st.seg = st.res = st.colGemini = null; st.variantiSketch = null; mostraVarianti(); preparaBase(); ok(true); }; fr.readAsDataURL(f); }); }
+$("btnSerie").onclick = () => $("fileSerie").click();
+$("fileSerie").onchange = async (e) => {
+  const files = [...e.target.files]; e.target.value = ""; if (!files.length) return;
+  const nv = $("nVarianti").value; $("nVarianti").value = "1"; let fatte = 0;
+  for (let i = 0; i < files.length; i++) {
+    $("statoSerie").textContent = `opera ${i + 1} di ${files.length}: ${files[i].name}`; log(`Serie ${i + 1}/${files.length}: ${files[i].name}`);
+    if (!(await caricaFileOriginale(files[i]))) { log("Formato non leggibile, salto.", "err"); continue; }
+    if (!(await generaSketch())) { log("Sketch non riuscito, salto.", "err"); continue; }
+    if (!(await rilevaColori())) continue;
+    await salvaGalleria(true); if ($("serieZip").checked) await scaricaPacchetto(); fatte++;
+  }
+  $("nVarianti").value = nv; $("statoSerie").textContent = `serie completata: ${fatte} di ${files.length} opere`; log(`Serie completata: ${fatte}/${files.length}.`, "ok");
+};
+
+// ---------- preset dei prompt ----------
+function leggiJSON(k, def) { try { const v = localStorage.getItem("lab_" + k); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
+function salvaJSON(k, v) { try { localStorage.setItem("lab_" + k, JSON.stringify(v)); } catch (e) {} }
+let mieiPreset = leggiJSON("presets", { p1: [], p2: [], p3: [] });
+let predefiniti = leggiJSON("default", {});
+const tuttiPreset = (pid) => [...PRESET_BASE[pid].map((x) => ({ ...x, base: true })), ...(mieiPreset[pid] || [])];
+const presetDefault = (pid) => tuttiPreset(pid).find((x) => x.id === predefiniti[pid]) || tuttiPreset(pid)[0];
+function creaGestore(pid) {
+  const ta = $(pid), box = document.createElement("div"); box.className = "preset";
+  box.innerHTML = `<select title="Prompt salvati"></select><button class="sec" data-a="def" title="Usa questo prompt all'avvio">★ Predefinito</button>
+    <input placeholder="nome del nuovo prompt"><button class="sec" data-a="nuovo">Salva come nuovo</button>
+    <button class="sec" data-a="agg">Aggiorna</button><button class="sec" data-a="del">Elimina</button>`;
+  ta.after(box);
+  const sel = box.querySelector("select"), nome = box.querySelector("input");
+  const riempi = (selId) => { sel.innerHTML = tuttiPreset(pid).map((x) => `<option value="${x.id}">${x.id === predefiniti[pid] || (!predefiniti[pid] && x === tuttiPreset(pid)[0]) ? "★ " : ""}${x.base ? "" : "• "}${x.nome}</option>`).join(""); if (selId) sel.value = selId; };
+  riempi(leggi(pid + "_sel") || presetDefault(pid).id);
+  sel.onchange = () => { const x = tuttiPreset(pid).find((y) => y.id === sel.value); if (x) { ta.value = x.testo; salva(pid, x.testo); salva(pid + "_sel", x.id); log(`Prompt ${pid.slice(1)}: "${x.nome}"`); } };
+  box.addEventListener("click", (e) => {
+    const a = e.target.dataset.a; if (!a) return; const x = tuttiPreset(pid).find((y) => y.id === sel.value);
+    if (a === "nuovo") { const n = nome.value.trim(); if (!n) { nome.focus(); return log("Scrivi un nome per il nuovo prompt.", "err"); }
+      const id = "u" + Date.now().toString(36); (mieiPreset[pid] = mieiPreset[pid] || []).push({ id, nome: n, testo: ta.value }); salvaJSON("presets", mieiPreset); nome.value = ""; riempi(id); salva(pid + "_sel", id); log(`Prompt salvato: "${n}"`, "ok"); }
+    if (a === "agg") { if (!x || x.base) return log("I prompt inclusi non si modificano: usa \"Salva come nuovo\".", "err"); x.testo = ta.value; salvaJSON("presets", mieiPreset); log(`Prompt aggiornato: "${x.nome}"`, "ok"); }
+    if (a === "del") { if (!x || x.base) return log("I prompt inclusi non si possono eliminare.", "err"); mieiPreset[pid] = mieiPreset[pid].filter((y) => y.id !== x.id); if (predefiniti[pid] === x.id) delete predefiniti[pid]; salvaJSON("presets", mieiPreset); salvaJSON("default", predefiniti); riempi(presetDefault(pid).id); sel.onchange(); log(`Prompt eliminato: "${x.nome}"`); }
+    if (a === "def") { if (!x) return; predefiniti[pid] = x.id; salvaJSON("default", predefiniti); riempi(x.id); log(`"${x.nome}" è ora il prompt predefinito.`, "ok"); }
+  });
+  ta.value = leggi(pid) || presetDefault(pid).testo; ta.oninput = () => salva(pid, ta.value);
+  return { riempi };
+}
+if (leggi("ver") !== "3") { ["p1", "p2", "p3"].forEach((k) => { try { localStorage.removeItem("lab_" + k); } catch (e) {} }); salva("ver", "3"); }
+const gestori = {}; ["p1", "p2", "p3"].forEach((pid) => (gestori[pid] = creaGestore(pid)));
+$("btnResetPrompt").onclick = () => ["p1", "p2", "p3"].forEach((pid) => { const x = presetDefault(pid); $(pid).value = x.testo; salva(pid, x.testo); gestori[pid].riempi(x.id); });
+$("btnEsportaPreset").onclick = () => { const blob = new Blob([JSON.stringify({ tipo: "arte-da-colorare-prompt", versione: 1, presets: mieiPreset, default: predefiniti }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "prompt_arte_da_colorare.json"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); };
+$("btnImportaPreset").onclick = () => $("fileImporta").click();
+$("fileImporta").onchange = async (e) => { const f = e.target.files[0]; if (!f) return;
+  try { const j = JSON.parse(await f.text()); if (!j.presets) throw new Error("file non valido"); let n = 0;
+    ["p1", "p2", "p3"].forEach((pid) => (j.presets[pid] || []).forEach((x) => { mieiPreset[pid] = mieiPreset[pid] || []; if (!mieiPreset[pid].some((y) => y.id === x.id)) { mieiPreset[pid].push({ id: x.id, nome: x.nome, testo: x.testo }); n++; } }));
+    if (j.default) predefiniti = { ...predefiniti, ...j.default }; salvaJSON("presets", mieiPreset); salvaJSON("default", predefiniti);
+    ["p1", "p2", "p3"].forEach((pid) => gestori[pid].riempi()); log(`Importati ${n} prompt.`, "ok"); } catch (err) { log("Importazione non riuscita: " + err.message, "err"); }
+  e.target.value = ""; };
+
+// ---------- pacchetto ZIP per l'app ----------
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xffffffff; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function creaZip(files) { // files: [{nome, dati: Uint8Array}] — metodo "store", compatibile con Windows/Android/iOS
+  const enc = new TextEncoder(), parti = [], centrale = []; let off = 0;
+  const d = new Date(), dt = ((d.getFullYear() - 1980) << 25) | ((d.getMonth() + 1) << 21) | (d.getDate() << 16) | (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  for (const f of files) {
+    const nome = enc.encode(f.nome), crc = crc32(f.dati), n = f.dati.length;
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint32(10, dt, true); h.setUint32(14, crc, true); h.setUint32(18, n, true); h.setUint32(22, n, true); h.setUint16(26, nome.length, true);
+    parti.push(new Uint8Array(h.buffer), nome, f.dati);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint32(12, dt, true); c.setUint32(16, crc, true); c.setUint32(20, n, true); c.setUint32(24, n, true); c.setUint16(28, nome.length, true); c.setUint32(42, off, true);
+    centrale.push(new Uint8Array(c.buffer), nome); off += 30 + nome.length + n;
+  }
+  const lc = centrale.reduce((a, b) => a + b.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, lc, true); e.setUint32(16, off, true);
+  return new Blob([...parti, ...centrale, new Uint8Array(e.buffer)], { type: "application/zip" });
+}
+const pngBytes = (cv, tipo = "image/png", q) => new Promise((ok) => cv.toBlob(async (b) => ok(new Uint8Array(await b.arrayBuffer())), tipo, q));
+async function scaricaPacchetto() {
+  const r = st.res; if (!r) return; log("Preparo il pacchetto…");
+  const enc = new TextEncoder(), files = [], tot = r.area.reduce((a, b) => a + b, 0);
+  // mappa delle zone: id zona codificato nel colore (R + G*256 + B*65536), per toccare/riempire le zone nell'app
+  const mz = document.createElement("canvas"); mz.width = r.W; mz.height = r.H; const g = mz.getContext("2d"), id = g.createImageData(r.W, r.H);
+  for (let i = 0; i < r.W * r.H; i++) { const z = r.full[i], o = i * 4; id.data[o] = z & 255; id.data[o + 1] = (z >> 8) & 255; id.data[o + 2] = (z >> 16) & 255; id.data[o + 3] = 255; }
+  g.putImageData(id, 0, 0);
+  const vista = $("vista").value, stile = $("stilePagina").value;
+  $("vista").value = "piatta"; const colPiatta = disegnaColorata(); $("vista").value = "morbida"; const colMorbida = disegnaColorata(); $("vista").value = vista;
+  $("stilePagina").value = "linee"; const pagLinee = disegnaNumerata(); $("stilePagina").value = "grigi"; const pagGrigi = disegnaNumerata(); $("stilePagina").value = stile;
+  const lineeSolo = canvasDa(st.sketch, r.W, r.H);
+  files.push({ nome: "immagini/originale.jpg", dati: await pngBytes(canvasDa(st.base), "image/jpeg", 0.92) });
+  files.push({ nome: "immagini/sketch.png", dati: await pngBytes(lineeSolo) });
+  if (st.seg) files.push({ nome: "immagini/segmentata.png", dati: await pngBytes(canvasDa(st.seg)) });
+  files.push({ nome: "immagini/colorata_piatta.png", dati: await pngBytes(colPiatta) });
+  files.push({ nome: "immagini/colorata_morbida.png", dati: await pngBytes(colMorbida) });
+  files.push({ nome: "immagini/da_colorare_numeri.png", dati: await pngBytes(pagLinee) });
+  files.push({ nome: "immagini/da_colorare_grigi.png", dati: await pngBytes(pagGrigi) });
+  files.push({ nome: "dati/mappa_zone.png", dati: await pngBytes(mz) });
+  files.push({ nome: "vettoriale/da_colorare.svg", dati: enc.encode(creaSVG("da_colorare")) });
+  files.push({ nome: "vettoriale/colorata.svg", dati: enc.encode(creaSVG("colorata")) });
+  files.push({ nome: "stampa/" + st.nome + ".pdf", dati: new Uint8Array(await (await pdfOpera()).arrayBuffer()) });
+  const palette = r.palette.map((c, i) => { const m = nomeMatita(i); return { numero: i + 1, hex: hex(c), rgb: c, percentuale: +(100 * r.counts[i] / tot).toFixed(3), ...(m ? { matita: { codice: m.cod, nome: m.nome, tavolozza: $("tavolozza").selectedOptions[0].text } } : {}) }; });
+  const zone = []; for (let k = 0; k < r.R; k++) zone.push({ id: k, colore: r.regColor[k] + 1, area_px: r.area[k], zona_sketch: r.zonaDi[k], etichetta: { x: Math.round(r.pos[k * 3]), y: Math.round(r.pos[k * 3 + 1]), raggio: +r.pos[k * 3 + 2].toFixed(1) } });
+  const dati = { formato: "arte-da-colorare", versione: 1, creato: new Date().toISOString(), nome: st.nome, larghezza: r.W, altezza: r.H,
+    parametri: { colori_max: Number($("kNum").value), toni: Number($("toni").value), soglia_linee: Number($("soglia").value), chiusura: Number($("chiusura").value), zona_minima: Number($("minArea").value), fonte_colori: $("fonte").value, allineamento: { dx: Number($("dx").value), dy: Number($("dy").value), scala: Number($("sc").value) } },
+    gemini: { modello: $("modello").value, risoluzione: $("risoluzione").value, formato: st.ratio, prompt_sketch: $("p1").value, prompt_segmentazione: $("p2").value, prompt_colorazione: $("p3").value },
+    mappa_zone: { file: "dati/mappa_zone.png", codifica: "id = R + G*256 + B*65536" }, palette, zone };
+  files.push({ nome: "dati/zone.json", dati: enc.encode(JSON.stringify(dati, null, 1)) });
+  files.push({ nome: "dati/legenda.csv", dati: enc.encode("numero;hex;r;g;b;percentuale;matita\n" + palette.map((p) => `${p.numero};${p.hex};${p.rgb.join(";")};${String(p.percentuale).replace(".", ",")};${p.matita ? p.matita.codice + " " + p.matita.nome : ""}`).join("\n")) });
+  files.push({ nome: "LEGGIMI.txt", dati: enc.encode(`Pacchetto "${st.nome}" — Arte da colorare\r\n\r\nimmagini/ : originale, sketch, segmentata, colorata (piatta e morbida), pagine da colorare (numeri, scala di grigi)\r\ndati/zone.json : dimensioni, tavolozza numerata, elenco zone (colore, area, posizione del numero), parametri e prompt usati\r\ndati/mappa_zone.png : ogni pixel contiene l'id della sua zona (id = R + G*256 + B*65536). Un'app legge il pixel toccato e riempie la zona col colore indicato in zone.json\r\ndati/legenda.csv : tavolozza per Excel\r\nvettoriale/ : SVG (zone con id e numero colore, linee, numeri)\r\nstampa/ : PDF A4 pronto da stampare (pagina da colorare, legenda, riferimento)\r\nPer colorare sul telefono: apri app.html e carica questo zip.\r\n`) });
+  const blob = creaZip(files), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = st.nome + "_pacchetto.zip"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  log(`Pacchetto creato: ${files.length} file, ${(blob.size / 1048576).toFixed(1)} MB.`, "ok");
+}
+$("btnPacchetto").onclick = scaricaPacchetto;
+// invia l'opera all'app di colorazione (stesso browser). opz.id fisso = sostituisce la versione precedente
+function origAllineata(W, H) { const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+  const sc = Number($("sc").value) / 100, dx = Number($("dx").value) / 1000 * W, dy = Number($("dy").value) / 1000 * H, w = W * sc, h = H * sc; g.drawImage(st.base, (W - w) / 2 + dx, (H - h) / 2 + dy, w, h); return c; }
+async function apriInApp(opz = {}) {
+  const r = st.res; if (!r) return;
+  const mz = document.createElement("canvas"); mz.width = r.W; mz.height = r.H; const g = mz.getContext("2d"), id = g.createImageData(r.W, r.H);
+  for (let i = 0; i < r.W * r.H; i++) { const z = r.full[i], o = i * 4; id.data[o] = z & 255; id.data[o + 1] = (z >> 8) & 255; id.data[o + 2] = (z >> 16) & 255; id.data[o + 3] = 255; }
+  g.putImageData(id, 0, 0);
+  const lin = canvasDa(st.sketch, r.W, r.H), lg = lin.getContext("2d"), li = lg.getImageData(0, 0, r.W, r.H);
+  for (let i = 0; i < r.W * r.H; i++) if (r.ponti[i]) { li.data[i * 4] = li.data[i * 4 + 1] = li.data[i * 4 + 2] = 20; } lg.putImageData(li, 0, 0);
+  const vista = $("vista").value; $("vista").value = "piatta"; const col = disegnaColorata(); $("vista").value = vista;
+  const palette = r.palette.map((c, i) => { const m = nomeMatita(i); return { numero: i + 1, hex: hex(c), rgb: c, ...(m ? { matita: { codice: m.cod, nome: m.nome } } : {}) }; });
+  const zone = []; for (let k = 0; k < r.R; k++) zone.push({ id: k, colore: r.regColor[k] + 1, etichetta: { x: Math.round(r.pos[k * 3]), y: Math.round(r.pos[k * 3 + 1]), raggio: +r.pos[k * 3 + 2].toFixed(1) } });
+  const th = document.createElement("canvas"), k = 300 / Math.max(r.W, r.H); th.width = Math.round(r.W * k); th.height = Math.round(r.H * k); th.getContext("2d").drawImage(lin, 0, 0, th.width, th.height);
+  const rec = { id: opz.id || "a" + Date.now().toString(36), nome: st.nome, creato: Date.now(), aggiornato: Date.now(), dati: { nome: st.nome, larghezza: r.W, altezza: r.H, palette, zone },
+    mappa: await blobDi(mz), linee: await blobDi(lin), colorata: await blobDi(col), originale: await blobDi(origAllineata(r.W, r.H), "image/jpeg", 0.93), progresso: new Uint16Array(r.R), mini: th.toDataURL("image/jpeg", 0.8) };
+  const d = await db(); await new Promise((ok, ko) => { const t = d.transaction("app", "readwrite"); t.objectStore("app").put(rec); t.oncomplete = ok; t.onerror = () => ko(t.error); });
+  if (opz.incorporato) return rec.id;
+  window.open("app.html?id=" + rec.id, "_blank"); log(`"${st.nome}" inviata all'app di colorazione.`, "ok");
+}
+$("btnApp").onclick = () => apriInApp();
+// passo 4 con i pezzi della segmentazione: ogni pezzo è una zona cliccabile, i contorni del passo 3 sono le linee
+async function recordDaSegmentazione(id) {
+  const r = st.segRes, w = r.w, h = r.h, N = w * h;
+  const mz = document.createElement("canvas"); mz.width = w; mz.height = h; const g = mz.getContext("2d"), md = g.createImageData(w, h);
+  for (let i = 0; i < N; i++) { const z = r.reg[i], o = i * 4; md.data[o] = z & 255; md.data[o + 1] = (z >> 8) & 255; md.data[o + 2] = (z >> 16) & 255; md.data[o + 3] = 255; }
+  g.putImageData(md, 0, 0);
+  // linee: contorni dei pezzi (grigio) + eventualmente lo sketch (nero) riportato nel formato dell'originale
+  const lin = document.createElement("canvas"); lin.width = w; lin.height = h; const lg = lin.getContext("2d"); lg.fillStyle = "#fff"; lg.fillRect(0, 0, w, h);
+  const li = lg.getImageData(0, 0, w, h);
+  for (let i = 0; i < N; i++) { const o = i * 4, x = i % w;
+    const bordo = (x < w - 1 && r.reg[i + 1] !== r.reg[i]) || (i + w < N && r.reg[i + w] !== r.reg[i]);
+    const v = bordo ? 175 : 255; li.data[o] = li.data[o + 1] = li.data[o + 2] = v; }
+  lg.putImageData(li, 0, 0);
+  // sketch: alta risoluzione, allineato all'originale, bianco -> trasparente, sfumature delle linee conservate
+  let schizzo = null;
+  if ($("linee4").checked && st.sketch) {
+    const SW = st.sketch.width, SH = st.sketch.height, sc = Number($("sc").value) / 100, ox = (SW - SW * sc) / 2 + Number($("dx").value) / 1000 * SW, oy = (SH - SH * sc) / 2 + Number($("dy").value) / 1000 * SH;
+    const K2 = Math.min(3, Math.max(1, (SW * sc) / w), 2600 / Math.max(w, h)), w2 = Math.round(w * K2), h2 = Math.round(h * K2);
+    const sk = document.createElement("canvas"); sk.width = w2; sk.height = h2; const sg = sk.getContext("2d"); sg.imageSmoothingQuality = "high";
+    sg.fillStyle = "#fff"; sg.fillRect(0, 0, w2, h2); sg.drawImage(st.sketch, -ox * w2 / (SW * sc), -oy * h2 / (SH * sc), w2 / sc, h2 / sc);
+    const sd = sg.getImageData(0, 0, w2, h2), dd = sd.data;
+    for (let i = 0; i < w2 * h2; i++) { const o = i * 4, lum = 0.299 * dd[o] + 0.587 * dd[o + 1] + 0.114 * dd[o + 2]; const a = Math.min(255, Math.max(0, (255 - lum) * 1.35 - 8));
+      dd[o] = dd[o + 1] = dd[o + 2] = 0; dd[o + 3] = a; }
+    sg.putImageData(sd, 0, 0); schizzo = await blobDi(sk);
+  }
+  const col = document.createElement("canvas"); col.width = w; col.height = h; const cg = col.getContext("2d"), cd = cg.createImageData(w, h);
+  for (let i = 0; i < N; i++) { const c = r.palette[r.regColor[r.reg[i]]], o = i * 4; cd.data[o] = c[0]; cd.data[o + 1] = c[1]; cd.data[o + 2] = c[2]; cd.data[o + 3] = 255; } cg.putImageData(cd, 0, 0);
+  const palette = r.palette.map((c, i) => ({ numero: i + 1, hex: hex(c), rgb: c }));
+  const zone = []; for (let k = 0; k < r.nReg; k++) zone.push({ id: k, colore: r.regColor[k] + 1, etichetta: { x: Math.round(r.pos[k * 3]), y: Math.round(r.pos[k * 3 + 1]), raggio: +r.pos[k * 3 + 2].toFixed(1) } });
+  const th = document.createElement("canvas"), k = 300 / Math.max(w, h); th.width = Math.round(w * k); th.height = Math.round(h * k); const tg2 = th.getContext("2d"); tg2.fillStyle = "#fff"; tg2.fillRect(0, 0, th.width, th.height);
+  if (schizzo) tg2.drawImage(await caricaImg(URL.createObjectURL(schizzo)), 0, 0, th.width, th.height); else tg2.drawImage(lin, 0, 0, th.width, th.height);
+  const rec = { id, nome: st.nome, creato: Date.now(), aggiornato: Date.now(), dati: { nome: st.nome, larghezza: w, altezza: h, palette, zone },
+    mappa: await blobDi(mz), linee: await blobDi(lin), schizzo, colorata: await blobDi(col), originale: await blobDi(canvasDa(st.base, w, h), "image/jpeg", 0.93), progresso: new Uint16Array(r.nReg), mini: th.toDataURL("image/jpeg", 0.8) };
+  const d = await db(); await new Promise((ok, ko) => { const t = d.transaction("app", "readwrite"); t.objectStore("app").put(rec); t.oncomplete = ok; t.onerror = () => ko(t.error); });
+}
+// passo 4: il disegno da colorare dentro la pagina
+async function aggiornaColora() {
+  const id = "lab-" + (st.idOpera || "corrente");
+  if ($("zone4").value === "seg") { if (!st.segRes) return; await recordDaSegmentazione(id); }
+  else { if (!st.res) return; await apriInApp({ id, incorporato: true }); }
+  st.idApp = id;
+  $("frameApp").src = "app.html?id=" + id + "&incorporato=1&t=" + Date.now(); $("vuotoApp").style.display = "none";
+  $("btnSchermo").disabled = $("btnRigenera4").disabled = $("btnTelefono").disabled = false;
+}
+$("btnSchermo").onclick = () => window.open("app.html?id=" + st.idApp, "_blank");
+// invia il disegno del passo 4 al server locale: il telefono lo scarica da app.html ("Dal PC")
+$("btnTelefono").onclick = async () => {
+  const btn = $("btnTelefono"); btn.disabled = true;
+  try {
+    const d = await db(), rec = await new Promise((ok, ko) => { const t = d.transaction("app", "readonly"), r = t.objectStore("app").get(st.idApp); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); });
+    if (!rec) throw new Error("disegno del passo 4 non trovato");
+    const fd = new FormData(), meta = { nome: rec.nome, dati: rec.dati, mini: rec.mini, creato: rec.creato };
+    fd.append("meta", JSON.stringify(meta));
+    for (const k of ["mappa", "linee", "schizzo", "colorata", "originale"]) if (rec[k]) fd.append(k, rec[k], k);
+    log("Invio al telefono…");
+    const r = await fetch("/api/condividi", { method: "POST", body: fd, headers: { "x-app-password": $("pw").value, "x-nome": encodeURIComponent(rec.nome || "Disegno") } });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status);
+    log(`"${rec.nome}" pronto per il telefono: apri l'indirizzo del tunnel + /app.html e tocca "📥 Dal PC".`, "ok");
+  } catch (e) { log("Invio al telefono non riuscito: " + e.message, "err"); }
+  btn.disabled = false;
+};
+$("btnRigenera4").onclick = aggiornaColora;
+["zone4", "linee4"].forEach((id) => $(id).addEventListener("change", () => { salva(id, $(id).type === "checkbox" ? $(id).checked : $(id).value); aggiornaColora(); }));
+{ const z = leggi("zone4"); if (z) $("zone4").value = z; const l = leggi("linee4"); if (l !== null) $("linee4").checked = l === "true"; }
+
+// ---------- avvio ----------
+$("btnFile").onclick = () => $("fileOrig").click();
+$("fileOrig").onchange = (e) => { apriOrig(e.target.files[0]); e.target.value = ""; };
+const to = $("telaOrig");
+["dragenter", "dragover"].forEach((ev) => to.addEventListener(ev, (e) => { e.preventDefault(); to.classList.add("drop"); }));
+["dragleave", "drop"].forEach((ev) => to.addEventListener(ev, (e) => { e.preventDefault(); to.classList.remove("drop"); }));
+to.addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) apriOrig(e.dataTransfer.files[0]); });
+$("btnCheck").onclick = async () => { salva("pw", $("pw").value);
+  try { const r = await fetch("/api/check", { headers: { "x-app-password": $("pw").value } }); const j = await r.json();
+    $("statoPw").innerHTML = !r.ok ? '<span class="err">✕ password errata</span>' : j.chiave ? '<span class="ok">✓ collegato</span>' : '<span class="err">chiave Gemini mancante</span>'; }
+  catch (e) { $("statoPw").innerHTML = '<span class="err">server non raggiungibile</span>'; } };
+["modello", "risoluzione", "soglia", "chiusura", "minArea", "toni", "vista", "stilePagina", "lineeToni", "gap", "tavolozza", "nVarianti"].forEach((id) => { const v = leggi(id); if (v) $(id).value = v; if (id === "modello" || id === "risoluzione") $(id).onchange = () => salva(id, $(id).value); });
+{ const k = leggi("k"); if (k) { $("kNum").value = k; $("kRange").value = k; } }
+$("pw").value = leggi("pw") || leggi("pwAI") || "";
+try { if (!$("pw").value) $("pw").value = localStorage.getItem("pw") || ""; } catch (e) {}
+etichette(); disegnaOverlay(); disegnaMia(); disegnaGalleria();
+log("Pronto. 1) carica l'opera  2) genera o carica lo sketch  3) Rileva colori.");
+</script>
+</body>
+</html>

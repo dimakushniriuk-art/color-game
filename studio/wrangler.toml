@@ -1,0 +1,13 @@
+name = "arte-da-colorare"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+
+# La pagina web (public/) viene servita come file statici.
+# Le chiamate a /api/* passano dal worker, che aggiunge la chiave Gemini.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Segreti (NON metterli qui): impostali con
+#   npx wrangler secret put GEMINI_API_KEY
+#   npx wrangler secret put APP_PASSWORD

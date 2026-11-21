@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arte da colorare — puzzle di colori</title>
+<style>
+  :root{--carta:#f6f1e7;--inchiostro:#1d1b18;--tenue:#6d665b;--linea:#d9cfbd;--accento:#b4462f;--accento2:#2f5d62;--card:#fffdf8;--ok:#2f6b3a;--err:#a12a1c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--carta);color:var(--inchiostro);font:15px/1.45 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--linea)}
+  h1{margin:0;font-size:26px;font-weight:600} h1 span{color:var(--accento);font-style:italic}
+  header a{font-family:system-ui,sans-serif;font-size:13px;color:var(--accento2)}
+  input,select,button{font-family:system-ui,sans-serif;font-size:14px}
+  button{border:1px solid var(--inchiostro);background:var(--inchiostro);color:#fff;border-radius:6px;padding:8px 14px;cursor:pointer}
+  button.sec{background:transparent;color:var(--inchiostro)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .principale{background:var(--accento);border-color:var(--accento)}
+  main{max-width:1500px;margin:0 auto;padding:18px 24px 60px}
+  .pannello{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px 22px;align-items:end;background:var(--card);
+    border:1px solid var(--linea);border-radius:10px;padding:14px 16px;margin-bottom:18px;font-family:system-ui,sans-serif}
+  .campo{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--tenue);text-transform:uppercase;letter-spacing:.6px}
+  .campo .riga{display:flex;gap:8px;align-items:center}
+  .campo input[type=range]{flex:1}
+  .campo input[type=number]{width:70px;border:1px solid var(--linea);border-radius:6px;padding:4px 6px}
+  .campo output{min-width:48px;text-align:right;color:var(--inchiostro);font-variant-numeric:tabular-nums;text-transform:none}
+  .check{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--inchiostro);text-transform:none;letter-spacing:0}
+  .griglia{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:1000px){.griglia{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--linea);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .card h2{margin:0;font-size:18px;font-weight:600;display:flex;gap:8px;align-items:baseline}
+  .card h2 small{font-family:system-ui,sans-serif;font-size:11px;color:var(--tenue);font-weight:400;letter-spacing:.6px;text-transform:uppercase}
+  .tela{position:relative;min-height:320px;border:1px dashed var(--linea);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;
+    background:repeating-linear-gradient(45deg,#fbf8f1,#fbf8f1 10px,#f7f2e8 10px,#f7f2e8 20px)}
+  .tela canvas{touch-action:none;max-width:100%;max-height:70vh;display:block;background:#fff}
+  .tela .vuoto{color:var(--tenue);font-family:system-ui,sans-serif;font-size:13px;text-align:center;padding:20px}
+  .tela.drop{border-color:var(--accento);border-style:solid}
+  #selezione{position:absolute;border:2px dashed var(--accento);background:rgba(180,70,47,.12);display:none;pointer-events:none}
+  .azioni{display:flex;flex-wrap:wrap;gap:8px}
+  .nota{font-family:system-ui,sans-serif;font-size:12px;color:var(--tenue)}
+  .barra{height:4px;background:var(--linea);border-radius:2px;overflow:hidden}
+  .barra div{height:100%;width:0;background:var(--accento);transition:width .2s}
+  #stato{font-family:system-ui,sans-serif;font-size:13px;color:var(--tenue);margin:6px 0 14px;min-height:18px}
+  .legenda{margin-top:18px;background:var(--card);border:1px solid var(--linea);border-radius:10px;padding:14px}
+  .legenda h3{margin:0 0 10px;font-size:17px;font-weight:600}
+  #colori{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px;font-family:system-ui,sans-serif;font-size:12px}
+  .col{display:flex;align-items:center;gap:6px;padding:3px 4px;border-radius:4px}
+  .col b{min-width:26px;text-align:right;font-variant-numeric:tabular-nums}
+  .col i{width:22px;height:22px;border-radius:4px;border:1px solid rgba(0,0,0,.2);flex:none}
+  .col span{color:var(--tenue);font-family:ui-monospace,Menlo,monospace;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Arte <span>da colorare</span></h1>
+  <a href="/">← Laboratorio</a> · <a href="/ai.html">Versione AI semplice</a>
+</header>
+
+<main>
+  <div class="pannello">
+    <label class="campo">Colori (fedeltà della colorata)
+      <span class="riga"><input type="range" id="kRange" min="2" max="500" value="120"><input type="number" id="kNum" min="2" max="500" value="120"></span>
+    </label>
+    <label class="campo">Dettaglio del disegno (forme)
+      <span class="riga"><input type="range" id="kd" min="2" max="120" value="20"><output id="kdOut"></output></span>
+    </label>
+    <label class="campo">Grandezza minima dei pezzi
+      <span class="riga"><input type="range" id="minArea" min="0" max="100" value="25"><output id="minAreaOut"></output></span>
+    </label>
+    <label class="campo">Morbidezza (meno rumore)
+      <span class="riga"><input type="range" id="smooth" min="0" max="5" value="2"><output id="smoothOut"></output></span>
+    </label>
+    <label class="campo">Precisione di elaborazione
+      <select id="workRes">
+        <option value="800">Veloce (800 px)</option>
+        <option value="1200" selected>Normale (1200 px)</option>
+        <option value="1600">Alta (1600 px, più lenta)</option>
+      </select>
+    </label>
+    <div class="campo"><button class="principale" id="btnElabora" disabled>Elabora ▸</button></div>
+  </div>
+
+  <div class="barra"><div id="barra"></div></div>
+  <div id="stato">Carica un'opera per iniziare.</div>
+
+  <div class="griglia">
+    <section class="card">
+      <h2>1 <small>Opera originale</small></h2>
+      <div class="tela" id="telaOrig">
+        <div class="vuoto">Trascina qui l'immagine<br>oppure usa il pulsante sotto</div>
+        <div id="selezione"></div>
+      </div>
+      <div class="azioni">
+        <input type="file" id="file" accept="image/*" hidden>
+        <button class="sec" id="btnFile">Scegli immagine…</button>
+        <button class="sec" id="btnRitaglia" disabled>Ritaglia selezione</button>
+        <button class="sec" id="btnAnnullaRit" disabled>Annulla ritaglio</button>
+      </div>
+      <div class="nota">Per togliere la cornice: trascina col mouse un rettangolo sul quadro e premi "Ritaglia selezione".</div>
+    </section>
+
+    <section class="card">
+      <h2>2 <small>Colorata a pezzi</small></h2>
+      <div class="tela" id="telaColore"><div class="vuoto">Qui comparirà l'immagine divisa in pezzi di colore</div></div>
+      <label class="campo">Vista
+        <select id="vistaColore"><option value="fine">Colori fini (più fedele)</option><option value="pezzi">Pezzi col colore prevalente</option></select>
+      </label>
+      <label class="check"><input type="checkbox" id="contorniColore"> Mostra i contorni dei pezzi</label>
+      <div class="azioni">
+        <button class="sec" id="dlColore" disabled>Scarica PNG</button>
+        <button class="sec" id="prColore" disabled>Stampa A4</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3 <small>Da colorare</small></h2>
+      <div class="tela" id="telaSketch"><div class="vuoto">Qui comparirà il disegno da colorare</div></div>
+      <div class="pannello" style="margin:0;padding:10px">
+        <label class="check"><input type="checkbox" id="numeri" checked> Numeri dei colori nei pezzi</label>
+        <label class="campo">Spessore linee
+          <span class="riga"><input type="range" id="spessore" min="1" max="4" value="1"><output id="spessoreOut"></output></span>
+        </label>
+        <label class="campo">Colore linee
+          <select id="coloreLinee"><option value="#000000">Nero</option><option value="#555555">Grigio scuro</option><option value="#9a9a9a">Grigio chiaro</option></select>
+        </label>
+      </div>
+      <div class="azioni">
+        <button class="sec" id="dlSketch" disabled>Scarica PNG</button>
+        <button class="sec" id="prSketch" disabled>Stampa A4</button>
+        <button class="sec" id="prLegenda" disabled>Stampa legenda colori</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="legenda">
+    <h3>Legenda colori <small class="nota" id="infoLegenda"></small></h3>
+    <div id="colori" class="nota">Dopo l'elaborazione qui trovi i colori numerati (1 = il più usato).</div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const OUT_LATO = 2400;       // lato lungo delle immagini finali (buono per A4)
+
+const st = { img: null, crop: null, src: null, res: null, sel: null, nome: "opera", worker: null };
+
+// ---------- utilità ----------
+function stato(msg, pct) { $("stato").textContent = msg; if (pct != null) $("barra").style.width = pct + "%"; }
+function salva(k, v) { try { localStorage.setItem("puz_" + k, v); } catch (e) {} }
+function leggi(k) { try { return localStorage.getItem("puz_" + k); } catch (e) { return null; } }
+function caricaImg(src) { return new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; }); }
+function hex(c) { return "#" + c.map((v) => v.toString(16).padStart(2, "0")).join(""); }
+function minAreaPx() {               // cursore 0..100 -> area minima in pixel (scala esponenziale)
+  const v = Number($("minArea").value); const wr = Number($("workRes").value);
+  return Math.round(Math.pow(v / 100, 2.2) * 0.004 * wr * wr) + 4;
+}
+function mettiCanvas(telaId, canvas) {
+  const t = $(telaId); t.querySelectorAll("canvas,.vuoto").forEach((n) => n.remove()); t.prepend(canvas);
+}
+
+// ---------- caricamento + ritaglio ----------
+function apriFile(f) {
+  if (!f || !f.type.startsWith("image/")) { stato("Il file non è un'immagine."); return; }
+  st.nome = f.name.replace(/\.[^.]+$/, "");
+  const fr = new FileReader();
+  fr.onload = async () => {
+    try { st.img = await caricaImg(fr.result); } catch (e) { stato("Il browser non riesce a leggere questo formato: prova JPG o PNG."); return; }
+    st.crop = null; st.sel = null; mostraOriginale();
+    $("btnElabora").disabled = false; $("btnAnnullaRit").disabled = true;
+    stato(`Caricata ${f.name} (${st.img.width}×${st.img.height}). Se c'è la cornice, ritagliala; poi premi Elabora.`, 0);
+    elabora();
+  };
+  fr.readAsDataURL(f);
+}
+function sorgente() {   // canvas con l'immagine (ritagliata) da elaborare
+  const c = st.crop || { x: 0, y: 0, w: st.img.width, h: st.img.height };
+  const cv = document.createElement("canvas"); cv.width = c.w; cv.height = c.h;
+  cv.getContext("2d").drawImage(st.img, c.x, c.y, c.w, c.h, 0, 0, c.w, c.h);
+  return cv;
+}
+function mostraOriginale() {
+  const cv = sorgente(); cv.id = "cvOrig"; mettiCanvas("telaOrig", cv);
+  $("selezione").style.display = "none"; st.sel = null; $("btnRitaglia").disabled = true;
+}
+// selezione rettangolare col mouse / dito
+(() => {
+  const tela = $("telaOrig"); let start = null;
+  const punto = (e) => { const cv = $("cvOrig"); const r = cv.getBoundingClientRect();
+    return { x: Math.min(Math.max(e.clientX - r.left, 0), r.width), y: Math.min(Math.max(e.clientY - r.top, 0), r.height), r, cv }; };
+  tela.addEventListener("pointerdown", (e) => { if (!$("cvOrig")) return; start = punto(e); tela.setPointerCapture(e.pointerId); e.preventDefault(); });
+  tela.addEventListener("pointermove", (e) => {
+    if (!start) return; const p = punto(e); const tr = tela.getBoundingClientRect();
+    const x = Math.min(start.x, p.x), y = Math.min(start.y, p.y), w = Math.abs(p.x - start.x), h = Math.abs(p.y - start.y);
+    const s = $("selezione"); s.style.display = "block";
+    s.style.left = (p.r.left - tr.left + x) + "px"; s.style.top = (p.r.top - tr.top + y) + "px"; s.style.width = w + "px"; s.style.height = h + "px";
+    st.sel = { x: x / p.r.width, y: y / p.r.height, w: w / p.r.width, h: h / p.r.height };
+  });
+  tela.addEventListener("pointerup", () => { start = null; $("btnRitaglia").disabled = !(st.sel && st.sel.w > 0.03 && st.sel.h > 0.03); });
+})();
+$("btnRitaglia").onclick = () => {
+  if (!st.sel) return;
+  const base = st.crop || { x: 0, y: 0, w: st.img.width, h: st.img.height };
+  st.crop = { x: Math.round(base.x + st.sel.x * base.w), y: Math.round(base.y + st.sel.y * base.h), w: Math.round(st.sel.w * base.w), h: Math.round(st.sel.h * base.h) };
+  mostraOriginale(); $("btnAnnullaRit").disabled = false; elabora();
+};
+$("btnAnnullaRit").onclick = () => { st.crop = null; mostraOriginale(); $("btnAnnullaRit").disabled = true; elabora(); };
+
+// ---------- elaborazione (Web Worker) ----------
+function elabora() {
+  if (!st.img) return;
+  if (st.worker) st.worker.terminate();
+  const src = sorgente(); const wr = Number($("workRes").value);
+  const s = Math.min(1, wr / Math.max(src.width, src.height));
+  const w = Math.max(1, Math.round(src.width * s)), h = Math.max(1, Math.round(src.height * s));
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(src, 0, 0, w, h);
+  const rgba = g.getImageData(0, 0, w, h).data;
+  const K = Number($("kNum").value);
+  $("btnElabora").disabled = true; stato("Elaborazione…", 2);
+  const wk = new Worker("segmenta-worker.js"); st.worker = wk;
+  wk.onmessage = (e) => {
+    const m = e.data;
+    if (m.tipo === "progresso") stato(m.msg, m.pct);
+    else if (m.tipo === "errore") { stato("Errore: " + m.msg, 0); $("btnElabora").disabled = false; wk.terminate(); st.worker = null; }
+    else if (m.tipo === "fatto") {
+      st.res = m.res; wk.terminate(); st.worker = null; $("btnElabora").disabled = false;
+      disegnaTutto();
+      stato(`Pronto: ${m.res.nReg.toLocaleString("it")} pezzi da colorare, ${m.res.palette.length} colori nel disegno, ${m.res.kFine} colori nella colorata — ${(m.res.ms / 1000).toFixed(1)} s.`, 100);
+    }
+  };
+  wk.postMessage({ rgba, w, h, K, Kd: Number($("kd").value), minArea: minAreaPx(), smooth: Number($("smooth").value) }, [rgba.buffer]);
+}
+
+// ---------- disegno risultati ----------
+function scalaOut() { const r = st.res; return Math.max(1, Math.round(OUT_LATO / Math.max(r.w, r.h))); }
+
+function disegnaColore() {
+  const r = st.res, S = scalaOut(), W = r.w * S, H = r.h * S;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d"); const id = g.createImageData(W, H), d = id.data;
+  const contorni = $("contorniColore").checked, fine = $("vistaColore").value === "fine";
+  for (let y = 0; y < H; y++) {
+    const sy = (y / S) | 0;
+    for (let x = 0; x < W; x++) {
+      const sx = (x / S) | 0, i = sy * r.w + sx, reg = r.reg[i];
+      let c = fine ? r.finePal[r.fineLab[i]] : r.palette[r.regColor[reg]], o = (y * W + x) * 4;
+      if (contorni && bordo(x, y, S, W, H)) { d[o] = d[o + 1] = d[o + 2] = 40; }
+      else { d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; }
+      d[o + 3] = 255;
+    }
+  }
+  g.putImageData(id, 0, 0); return cv;
+}
+// pixel di bordo alla risoluzione finale (confronto con il pixel a destra / sotto)
+function bordo(x, y, S, W, H) {
+  const r = st.res, a = r.reg[((y / S) | 0) * r.w + ((x / S) | 0)];
+  if (x + 1 < W && r.reg[((y / S) | 0) * r.w + (((x + 1) / S) | 0)] !== a) return true;
+  if (y + 1 < H && r.reg[(((y + 1) / S) | 0) * r.w + ((x / S) | 0)] !== a) return true;
+  return false;
+}
+function disegnaSketch() {
+  const r = st.res, S = scalaOut(), W = r.w * S, H = r.h * S;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d"); const id = g.createImageData(W, H), d = id.data;
+  const sp = Number($("spessore").value) - 1;
+  const lc = $("coloreLinee").value; const lr = parseInt(lc.slice(1, 3), 16), lg = parseInt(lc.slice(3, 5), 16), lb = parseInt(lc.slice(5, 7), 16);
+  const m = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (bordo(x, y, S, W, H)) m[y * W + x] = 1;
+  if (sp > 0) {
+    const m2 = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (m[y * W + x])
+      for (let dy = -sp; dy <= sp; dy++) for (let dx = -sp; dx <= sp; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < W && yy < H) m2[yy * W + xx] = 1; }
+    m.set(m2);
+  }
+  for (let i = 0; i < W * H; i++) { const o = i * 4; if (m[i]) { d[o] = lr; d[o + 1] = lg; d[o + 2] = lb; } else { d[o] = d[o + 1] = d[o + 2] = 255; } d[o + 3] = 255; }
+  // cornice esterna
+  for (let x = 0; x < W; x++) for (const y of [0, H - 1]) { const o = (y * W + x) * 4; d[o] = lr; d[o + 1] = lg; d[o + 2] = lb; }
+  for (let y = 0; y < H; y++) for (const x of [0, W - 1]) { const o = (y * W + x) * 4; d[o] = lr; d[o + 1] = lg; d[o + 2] = lb; }
+  g.putImageData(id, 0, 0);
+  if ($("numeri").checked) {
+    g.fillStyle = "#6b6b6b"; g.textAlign = "center"; g.textBaseline = "middle";
+    for (let k = 0; k < r.nReg; k++) {
+      const dpx = r.pos[k * 3 + 2] * S;              // distanza dal bordo più vicino (px finali)
+      const num = String(r.regColor[k] + 1);
+      const fs = Math.min(30, dpx * (num.length > 2 ? 0.75 : 0.95));
+      if (fs < 7) continue;                            // pezzo troppo piccolo per il numero
+      g.font = `${fs.toFixed(1)}px system-ui, sans-serif`;
+      g.fillText(num, (r.pos[k * 3] + 0.5) * S, (r.pos[k * 3 + 1] + 0.5) * S);
+    }
+  }
+  return cv;
+}
+function disegnaLegenda() {
+  const r = st.res, tot = r.counts.reduce((a, b) => a + b, 0);
+  const box = $("colori"); box.innerHTML = "";
+  r.palette.forEach((c, i) => {
+    const el = document.createElement("div"); el.className = "col";
+    el.title = `${(100 * r.counts[i] / tot).toFixed(1)}% dell'immagine`;
+    el.innerHTML = `<b>${i + 1}</b><i style="background:${hex(c)}"></i><span>${hex(c)}</span>`;
+    box.appendChild(el);
+  });
+  $("infoLegenda").textContent = `— ${r.palette.length} colori`;
+}
+function disegnaTutto() {
+  if (!st.res) return;
+  st.cvColore = disegnaColore(); mettiCanvas("telaColore", st.cvColore);
+  st.cvSketch = disegnaSketch(); mettiCanvas("telaSketch", st.cvSketch);
+  disegnaLegenda();
+  ["dlColore", "prColore", "dlSketch", "prSketch", "prLegenda"].forEach((id) => ($(id).disabled = false));
+}
+
+// ---------- download / stampa ----------
+function scarica(cv, nome) { cv.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }, "image/png"); }
+function finestraStampa(html, orient) {
+  const w = window.open("", "_blank");
+  if (!w) { stato("Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito."); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${st.nome}</title><style>
+    @page{size:A4 ${orient};margin:8mm} html,body{margin:0} body{font-family:system-ui,sans-serif}
+    .pag{height:calc(100vh);display:flex;align-items:center;justify-content:center}
+    .pag img{max-width:100%;max-height:100vh;object-fit:contain}
+    .leg{display:grid;grid-template-columns:repeat(6,1fr);gap:4px 10px;font-size:10px}
+    .leg div{display:flex;align-items:center;gap:5px;break-inside:avoid}
+    .leg b{min-width:22px;text-align:right} .leg i{width:16px;height:16px;border:1px solid #999;flex:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  </style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  w.document.close();
+}
+function stampaImg(cv) { finestraStampa(`<div class="pag"><img src="${cv.toDataURL("image/png")}"></div>`, cv.width > cv.height ? "landscape" : "portrait"); }
+function stampaLegenda() {
+  const r = st.res;
+  const righe = r.palette.map((c, i) => `<div><b>${i + 1}</b><i style="background:${hex(c)}"></i>${hex(c)}</div>`).join("");
+  finestraStampa(`<h3>${st.nome} — legenda colori (${r.palette.length})</h3><div class="leg">${righe}</div>`, "portrait");
+}
+$("dlColore").onclick = () => scarica(st.cvColore, st.nome + "_colorata.png");
+$("dlSketch").onclick = () => scarica(st.cvSketch, st.nome + "_da_colorare.png");
+$("prColore").onclick = () => stampaImg(st.cvColore);
+$("prSketch").onclick = () => stampaImg(st.cvSketch);
+$("prLegenda").onclick = stampaLegenda;
+
+// ---------- controlli ----------
+function aggiornaEtichette() {
+  $("minAreaOut").textContent = minAreaPx() + " px";
+  $("smoothOut").textContent = $("smooth").value;
+  $("kdOut").textContent = $("kd").value;
+  $("spessoreOut").textContent = $("spessore").value;
+}
+let timer = null;
+const rielabora = () => { aggiornaEtichette(); clearTimeout(timer); timer = setTimeout(elabora, 500); };
+$("kRange").oninput = () => { $("kNum").value = $("kRange").value; salva("k", $("kRange").value); rielabora(); };
+$("kNum").onchange = () => { let v = Math.max(2, Math.min(500, Number($("kNum").value) || 2)); $("kNum").value = v; $("kRange").value = v; salva("k", v); rielabora(); };
+["minArea", "smooth", "workRes", "kd"].forEach((id) => { $(id).addEventListener("input", () => { salva(id, $(id).value); rielabora(); }); });
+["numeri", "spessore", "coloreLinee"].forEach((id) => $(id).addEventListener("input", () => {
+  salva(id, $(id).type === "checkbox" ? $(id).checked : $(id).value); aggiornaEtichette();
+  if (st.res) { st.cvSketch = disegnaSketch(); mettiCanvas("telaSketch", st.cvSketch); }
+}));
+$("vistaColore").addEventListener("input", () => { if (st.res) { st.cvColore = disegnaColore(); mettiCanvas("telaColore", st.cvColore); } });
+$("contorniColore").addEventListener("input", () => { if (st.res) { st.cvColore = disegnaColore(); mettiCanvas("telaColore", st.cvColore); } });
+$("btnElabora").onclick = elabora;
+
+$("btnFile").onclick = () => $("file").click();
+$("file").onchange = (e) => apriFile(e.target.files[0]);
+const to = $("telaOrig");
+["dragenter", "dragover"].forEach((ev) => to.addEventListener(ev, (e) => { e.preventDefault(); to.classList.add("drop"); }));
+["dragleave", "drop"].forEach((ev) => to.addEventListener(ev, (e) => { e.preventDefault(); to.classList.remove("drop"); }));
+to.addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) apriFile(e.dataTransfer.files[0]); });
+
+// preferenze salvate
+(() => {
+  if (leggi("ver") !== "2") { try { Object.keys(localStorage).filter((x) => x.startsWith("puz_")).forEach((x) => localStorage.removeItem(x)); } catch (e) {} salva("ver", "2"); }
+  const k = leggi("k"); if (k) { $("kRange").value = k; $("kNum").value = k; }
+  ["minArea", "smooth", "workRes", "kd", "spessore", "coloreLinee"].forEach((id) => { const v = leggi(id); if (v !== null) $(id).value = v; });
+  const n = leggi("numeri"); if (n !== null) $("numeri").checked = n === "true";
+  aggiornaEtichette();
+})();
+</script>
+</body>
+</html>

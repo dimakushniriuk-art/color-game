@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#b4462f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icona-192.png">
+<link rel="apple-touch-icon" href="icona-192.png">
+<title>Colora — Arte da colorare</title>
+<style>
+  :root{--carta:#f6f1e7;--inchiostro:#1d1b18;--tenue:#6d665b;--linea:#d9cfbd;--accento:#b4462f;--card:#fffdf8}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--carta);color:var(--inchiostro);font-family:system-ui,-apple-system,sans-serif;overscroll-behavior:none}
+  button{font:inherit;border:1px solid var(--inchiostro);background:var(--inchiostro);color:#fff;border-radius:8px;padding:8px 12px;cursor:pointer}
+  button.sec{background:transparent;color:var(--inchiostro)} button:disabled{opacity:.35}
+  /* ---- home ---- */
+  #home{max-width:900px;margin:0 auto;padding:20px 16px 40px}
+  #home h1{font-family:Georgia,serif;font-weight:600;margin:6px 0 4px} #home h1 span{color:var(--accento);font-style:italic}
+  .nota{font-size:13px;color:var(--tenue)}
+  .opere{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:16px}
+  .opera{background:var(--card);border:1px solid var(--linea);border-radius:12px;padding:8px;cursor:pointer}
+  .opera img{width:100%;aspect-ratio:3/4;object-fit:contain;background:#fff;border-radius:8px}
+  .opera b{display:block;font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .barra-prog{height:5px;background:var(--linea);border-radius:3px;overflow:hidden;margin-top:5px} .barra-prog div{height:100%;background:var(--accento)}
+  .opera .riga{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--tenue);margin-top:4px}
+  .opera .riga button{padding:2px 7px;font-size:11px}
+  /* ---- colorazione ---- */
+  #gioco{position:fixed;inset:0;display:none;flex-direction:column;background:#e9e3d6}
+  #top{display:flex;align-items:center;gap:6px;padding:calc(6px + env(safe-area-inset-top)) 8px 6px;background:var(--card);border-bottom:1px solid var(--linea)}
+  #top .tit{flex:1;min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #top button{padding:6px 10px;font-size:14px}
+  #area{flex:1;position:relative;overflow:hidden;touch-action:none}
+  #foglio{position:absolute;left:0;top:0;transform-origin:0 0;box-shadow:0 2px 14px #0002;background:#fff}
+  #foglio canvas{position:absolute;left:0;top:0;width:100%;height:100%}
+  #strato,#schizzo{pointer-events:none}
+  #numeri{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #avviso{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:#1d1b18e0;color:#fff;padding:7px 12px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none}
+  #tavolozza{display:flex;gap:6px;overflow-x:auto;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--linea)}
+  .colore{flex:none;width:58px;border-radius:10px;border:2px solid transparent;padding:4px 2px;text-align:center;font-size:11px;cursor:pointer;background:#fff}
+  .colore i{display:block;height:32px;border-radius:7px;border:1px solid #0002;margin-bottom:3px;position:relative}
+  .colore b{font-size:14px} .colore small{display:block;color:var(--tenue);font-size:9px;line-height:1.1;height:20px;overflow:hidden}
+  .colore.sel{border-color:var(--accento)} .colore.finito{opacity:.45} .colore.finito i::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;text-shadow:0 0 3px #000}
+  #menu{position:absolute;right:8px;top:52px;background:var(--card);border:1px solid var(--linea);border-radius:10px;padding:8px;display:none;flex-direction:column;gap:6px;z-index:5;box-shadow:0 6px 20px #0003;min-width:220px}
+  #menu label{display:flex;gap:8px;align-items:center;font-size:14px}
+</style>
+</head>
+<body>
+<section id="home">
+  <h1>Colora <span>l'arte</span></h1>
+  <div class="nota">Apri un pacchetto creato con il Laboratorio (.zip) e colora toccando le zone. I progressi si salvano da soli su questo dispositivo, anche senza internet.</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+    <input type="file" id="fileZip" accept=".zip,application/zip" multiple hidden>
+    <button id="btnApri">＋ Apri pacchetto (.zip)</button>
+    <button id="btnDalPC">📥 Dal PC</button>
+    <a href="/"><button class="sec">Laboratorio</button></a>
+  </div>
+  <div id="dalPC" class="nota" style="margin-top:12px"></div>
+  <div id="opere" class="opere"></div>
+</section>
+
+<section id="gioco">
+  <div id="top">
+    <button class="sec" id="btnIndietro" title="Indietro">←</button>
+    <div class="tit"><span id="titolo"></span> · <span id="perc">0%</span></div>
+    <button class="sec" id="btnAnnulla" title="Annulla">↶</button>
+    <button class="sec" id="btnOcchio" title="Tieni premuto per vedere l'originale">👁</button>
+    <button class="sec" id="btnMenu" title="Menu">⋯</button>
+  </div>
+  <div id="menu">
+    <label><input type="checkbox" id="optRivela" checked> Rivela l'originale (al posto del colore piatto)</label>
+    <label><input type="checkbox" id="optGuidato" checked> Solo il colore giusto</label>
+    <label><input type="checkbox" id="optEvidenzia" checked> Evidenzia le zone del colore scelto</label>
+    <label><input type="checkbox" id="optNumeri" checked> Mostra i numeri</label>
+    <label>Colore delle linee <select id="optColLinee"><option value="#1c1c1c">Nero</option><option value="#555555">Grigio scuro</option><option value="#6b4a2e">Seppia</option><option value="#24406e">Blu</option><option value="#8a8a8a">Grigio chiaro</option></select></label>
+    <button class="sec" id="btnCentra">Adatta allo schermo</button>
+    <button class="sec" id="btnSalvaPng">Salva immagine (PNG)</button>
+    <button class="sec" id="btnAzzera">Ricomincia da capo</button>
+  </div>
+  <div id="area"><div id="foglio"><canvas id="tela"></canvas><canvas id="strato"></canvas><canvas id="schizzo"></canvas></div><canvas id="numeri"></canvas><div id="avviso"></div></div>
+  <div id="tavolozza"></div>
+</section>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+// ---------- database (condiviso con il Laboratorio) ----------
+function db() { return new Promise((ok, ko) => { const r = indexedDB.open("arte-da-colorare", 2);
+  r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains("opere")) d.createObjectStore("opere", { keyPath: "id" }); if (!d.objectStoreNames.contains("app")) d.createObjectStore("app", { keyPath: "id" }); };
+  r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }); }
+async function dbOp(modo, fn) { const d = await db(); return new Promise((ok, ko) => { const t = d.transaction("app", modo), s = t.objectStore("app"), r = fn(s); t.oncomplete = () => ok(r && r.result); t.onerror = () => ko(t.error); }); }
+
+// ---------- lettura ZIP (store e deflate) ----------
+async function leggiZip(buf) {
+  const u = new Uint8Array(buf), dv = new DataView(buf); let e = u.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--; if (e < 0) throw new Error("non è uno zip valido");
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const files = {}, dec = new TextDecoder();
+  for (let k = 0; k < n; k++) {
+    const metodo = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lo = dv.getUint32(p + 42, true);
+    const nome = dec.decode(u.subarray(p + 46, p + 46 + nl)); p += 46 + nl + el + cl;
+    const ini = lo + 30 + dv.getUint16(lo + 26, true) + dv.getUint16(lo + 28, true), dati = u.subarray(ini, ini + csize);
+    files[nome] = { metodo, dati };
+  }
+  return { nomi: Object.keys(files), leggi: async (nome) => { const f = files[nome]; if (!f) return null; if (f.metodo === 0) return f.dati;
+    if (f.metodo === 8) return new Uint8Array(await new Response(new Blob([f.dati]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer()); throw new Error("compressione non supportata"); } };
+}
+async function importaZip(file) {
+  const z = await leggiZip(await file.arrayBuffer()), cerca = (fine) => z.nomi.find((n) => n.endsWith(fine));
+  const jn = cerca("dati/zone.json"), mn = cerca("dati/mappa_zone.png"), ln = cerca("immagini/sketch.png"), cn = cerca("immagini/colorata_piatta.png");
+  if (!jn || !mn || !ln) throw new Error("il pacchetto non contiene zone.json, mappa_zone.png e sketch.png");
+  const dati = JSON.parse(new TextDecoder().decode(await z.leggi(jn)));
+  const rec = { id: "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), nome: dati.nome || file.name.replace(/\.zip$/i, ""), creato: Date.now(), dati,
+    mappa: new Blob([await z.leggi(mn)], { type: "image/png" }), linee: new Blob([await z.leggi(ln)], { type: "image/png" }), colorata: cn ? new Blob([await z.leggi(cn)], { type: "image/png" }) : null,
+    progresso: new Uint16Array(dati.zone.length), aggiornato: Date.now() };
+  rec.mini = await miniatura(rec.linee);
+  await dbOp("readwrite", (s) => s.put(rec)); return rec.id;
+}
+async function miniatura(blob) { const im = await caricaImg(URL.createObjectURL(blob)); const c = document.createElement("canvas"), k = 300 / Math.max(im.width, im.height);
+  c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL("image/jpeg", 0.8); }
+function caricaImg(src) { return new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; }); }
+
+// ---------- home ----------
+async function disegnaHome() {
+  $("home").style.display = "block"; $("gioco").style.display = "none";
+  if (location.search) history.replaceState(null, "", "app.html");
+  const lista = ((await dbOp("readonly", (s) => s.getAll())) || []).sort((a, b) => b.aggiornato - a.aggiornato);
+  $("opere").innerHTML = lista.length ? "" : '<div class="nota">Nessun disegno ancora. Apri un pacchetto .zip creato nel Laboratorio.</div>';
+  for (const o of lista) {
+    const fatte = o.progresso.filter((v) => v).length, pct = Math.round(100 * fatte / Math.max(1, o.progresso.length));
+    const el = document.createElement("div"); el.className = "opera";
+    el.innerHTML = `<img src="${o.mini}"><b></b><div class="barra-prog"><div style="width:${pct}%"></div></div><div class="riga"><span>${pct}%</span><button class="sec">Elimina</button></div>`;
+    el.querySelector("b").textContent = o.nome;
+    el.onclick = (e) => { if (e.target.tagName === "BUTTON") return; apri(o.id); };
+    el.querySelector("button").onclick = async () => { if (confirmaElimina(o.nome)) { await dbOp("readwrite", (s) => s.delete(o.id)); disegnaHome(); } };
+    $("opere").appendChild(el);
+  }
+}
+function confirmaElimina(nome) { return window.confirm(`Eliminare "${nome}" e i suoi progressi?`); }
+$("btnApri").onclick = () => $("fileZip").click();
+// ---------- disegni inviati dal Laboratorio sul PC ("📥 Dal PC") ----------
+async function importaDalPC(id) {
+  const recId = "pc-" + id, esiste = await dbOp("readonly", (s) => s.get(recId)); if (esiste) return recId;
+  const r = await fetch("/api/condivisi/" + id, { cache: "no-store" }); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "errore " + r.status);
+  const fd = await r.formData(), meta = JSON.parse(fd.get("meta")), b = (k) => fd.get(k) || null;
+  const rec = { id: recId, nome: meta.nome, creato: meta.creato || Date.now(), aggiornato: Date.now(), dati: meta.dati, mini: meta.mini,
+    mappa: b("mappa"), linee: b("linee"), schizzo: b("schizzo"), colorata: b("colorata"), originale: b("originale"), progresso: new Uint16Array(meta.dati.zone.length) };
+  await dbOp("readwrite", (s) => s.put(rec)); return recId;
+}
+async function mostraDalPC(manuale) {
+  const box = $("dalPC"); let lista = [];
+  try { const r = await fetch("/api/condivisi", { cache: "no-store" }); if (r.ok) lista = await r.json(); } catch (e) { if (manuale) box.textContent = "PC non raggiungibile."; return; }
+  if (!lista.length) { box.textContent = manuale ? "Nessun disegno inviato dal PC. Nel Laboratorio, passo 4, premi \"📱 Invia al telefono\"." : ""; return; }
+  box.innerHTML = "<b>Inviati dal PC</b> — tocca per aprire:";
+  for (const c of lista) { const bt = document.createElement("button"); bt.className = "sec"; bt.style.margin = "6px 6px 0 0";
+    bt.textContent = `${c.nome} (${c.mb} MB, ${new Date(c.ts).toLocaleTimeString("it", { hour: "2-digit", minute: "2-digit" })})`;
+    bt.onclick = async () => { bt.disabled = true; bt.textContent = "Scarico…"; try { apri(await importaDalPC(c.id)); } catch (e) { alert("Non riuscito: " + e.message); bt.disabled = false; } };
+    box.appendChild(document.createElement("br")); box.appendChild(bt); }
+}
+$("btnDalPC").onclick = () => mostraDalPC(true);
+$("fileZip").onchange = async (e) => { const files = [...e.target.files]; e.target.value = ""; let ultimo = null;
+  for (const f of files) { try { ultimo = await importaZip(f); } catch (err) { alert(`"${f.name}": ${err.message}`); } }
+  if (files.length === 1 && ultimo) apri(ultimo); else disegnaHome(); };
+
+// ---------- colorazione ----------
+const G = { op: null, W: 0, H: 0, zona: null, linea: null, colZona: null, pal: [], sel: 1, storia: [], vista: { s: 1, x: 0, y: 0 }, ctx: null, img: null, soluzione: false, colorata: null };
+async function apri(id) {
+  const o = await dbOp("readonly", (s) => s.get(id)); if (!o) return; G.op = o;
+  const d = o.dati, W = d.larghezza, H = d.altezza; G.W = W; G.H = H;
+  const leggiPix = async (blob) => { const im = await caricaImg(URL.createObjectURL(blob)); const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"); g.drawImage(im, 0, 0, W, H); return g.getImageData(0, 0, W, H).data; };
+  const mp = await leggiPix(o.mappa), lp = await leggiPix(o.linee);
+  G.contorno = null; G.zona = new Int32Array(W * H); G.linea = new Uint8Array(W * H); G.lineaV = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) { G.zona[i] = mp[i * 4] | (mp[i * 4 + 1] << 8) | (mp[i * 4 + 2] << 16); const l = 0.299 * lp[i * 4] + 0.587 * lp[i * 4 + 1] + 0.114 * lp[i * 4 + 2];
+    G.lineaV[i] = l; G.linea[i] = l < 150 ? 1 : 0; G.contorno = G.contorno || new Uint8Array(W * H); if (l >= 150 && l < 200) G.contorno[i] = 1; }
+  G.colZona = new Uint16Array(d.zone.length); d.zone.forEach((z, k) => (G.colZona[z.id] = z.colore));
+  G.schizzo = o.schizzo ? await caricaImg(URL.createObjectURL(o.schizzo)) : null;
+  avviso("Preparo le linee…"); await new Promise((r) => setTimeout(r, 20)); preparaVettori(); disegnaSchizzo();
+  G.pal = d.palette; G.storia = []; G.sel = primoNonFinito() || 1;
+  G.colorata = o.colorata ? await caricaImg(URL.createObjectURL(o.colorata)) : null;
+  G.orig = o.originale ? await leggiPix(o.originale) : null; $("optRivela").disabled = !G.orig;
+  const tela = $("tela"); tela.width = W; tela.height = H; G.ctx = tela.getContext("2d"); G.img = G.ctx.createImageData(W, H);
+  const strato = $("strato"); strato.width = W; strato.height = H; G.sctx = strato.getContext("2d"); G.simg = G.sctx.createImageData(W, H);
+  $("foglio").style.width = W + "px"; $("foglio").style.height = H + "px";
+  $("titolo").textContent = o.nome; $("home").style.display = "none"; $("gioco").style.display = "flex";
+  if (!document.body.classList.contains("incorporato")) history.replaceState(null, "", "app.html?id=" + id);
+  disegnaTavolozza(); centra(); render(); aggiornaPerc();
+}
+function prossimoNonFinito(da) { const rest = restanti(), n = G.pal.length; for (let k = 1; k <= n; k++) { const c = ((da - 1 + k) % n) + 1; if (rest[c] > 0) return c; } return 0; }
+function primoNonFinito() { const rest = restanti(); for (let n = 1; n <= G.pal.length; n++) if (rest[n] > 0) return n; return 0; }
+function restanti() { const r = new Int32Array(G.pal.length + 1); for (let k = 0; k < G.colZona.length; k++) if (G.op.progresso[k] !== G.colZona[k]) r[G.colZona[k]]++; return r; }
+function rgbDi(n) { const p = G.pal[n - 1]; return p ? p.rgb : [255, 255, 255]; }
+// livello di dettaglio in base allo zoom: da lontano solo lo sketch, avvicinandosi contorni e numeri
+function dettaglio() { const z = G.vista.s / (G.fitS || G.vista.s); return Math.max(0, Math.min(1, (z - 1.4) / 1.4)); }
+// ---------- linee vettoriali (nitide a qualsiasi zoom) ----------
+// contorno di ogni etichetta lungo i bordi dei pixel -> semplificato (niente gradini) -> curve morbide (Path2D)
+function contorni(lab, W, H, nLab) {
+  const per = Array.from({ length: nLab }, () => []), V = (x, y) => y * (W + 1) + x;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x, a = lab[i]; if (a < 0) continue; const e = per[a];
+    if (y === 0 || lab[i - W] !== a) e.push(V(x + 1, y), V(x, y));
+    if (y === H - 1 || lab[i + W] !== a) e.push(V(x, y + 1), V(x + 1, y + 1));
+    if (x === 0 || lab[i - 1] !== a) e.push(V(x, y), V(x, y + 1));
+    if (x === W - 1 || lab[i + 1] !== a) e.push(V(x + 1, y + 1), V(x + 1, y)); }
+  return per.map((e) => { if (!e.length) return null; const out = new Map();
+    for (let k = 0; k < e.length; k += 2) { const l = out.get(e[k]); if (l) l.push(k); else out.set(e[k], [k]); }
+    const usato = new Uint8Array(e.length / 2), path = new Path2D(); let vuoto = true;
+    for (let k0 = 0; k0 < e.length; k0 += 2) { if (usato[k0 / 2]) continue; const pts = []; let k = k0;
+      while (k >= 0 && !usato[k / 2]) { usato[k / 2] = 1; const v = e[k]; pts.push([v % (W + 1), (v / (W + 1)) | 0]); const l = out.get(e[k + 1]); k = -1; if (l) for (const c of l) if (!usato[c / 2]) { k = c; break; } }
+      if (pts.length < 4) continue; const q = semplifica(pts, 0.75); if (q.length < 3) continue; curva(path, q); vuoto = false; }
+    return vuoto ? null : path; });
+}
+function rdp(p, a, b, eps, out) { let md = 0, mi = -1; const [x1, y1] = p[a], [x2, y2] = p[b], dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1;
+  for (let i = a + 1; i < b; i++) { const d = Math.abs(dy * p[i][0] - dx * p[i][1] + x2 * y1 - y2 * x1) / L; if (d > md) { md = d; mi = i; } }
+  if (md > eps) { rdp(p, a, mi, eps, out); out.push(p[mi]); rdp(p, mi, b, eps, out); } }
+function semplifica(pts, eps) { // anello chiuso: divido nel punto più lontano dal primo
+  let far = 0, fd = -1; for (let i = 1; i < pts.length; i++) { const d = (pts[i][0] - pts[0][0]) ** 2 + (pts[i][1] - pts[0][1]) ** 2; if (d > fd) { fd = d; far = i; } }
+  const loop = pts.concat([pts[0]]), out = [pts[0]]; rdp(loop, 0, far, eps, out); out.push(loop[far]); rdp(loop, far, loop.length - 1, eps, out); return out; }
+function curva(path, q) { const n = q.length, m = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; let s = m(q[n - 1], q[0]); path.moveTo(s[0], s[1]);
+  for (let i = 0; i < n; i++) { const c = q[i], e = m(c, q[(i + 1) % n]); path.quadraticCurveTo(c[0], c[1], e[0], e[1]); } path.closePath(); }
+// sketch ad alta risoluzione: linee continue con le loro sfumature, ricolorabili
+function disegnaSchizzo() {
+  const c = $("schizzo"); if (!G.schizzo) { c.width = 1; c.height = 1; c.getContext("2d").clearRect(0, 0, 1, 1); return; }
+  c.width = G.schizzo.width; c.height = G.schizzo.height; const g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height); g.drawImage(G.schizzo, 0, 0); g.globalCompositeOperation = "source-in"; g.fillStyle = $("optColLinee").value; g.fillRect(0, 0, c.width, c.height); g.globalCompositeOperation = "source-over";
+  c.style.display = G.soluzione ? "none" : "block";
+}
+function preparaVettori() {
+  const { W, H } = G, N = W * H;
+  const lin = new Int32Array(N); let nl = 0; for (let i = 0; i < N; i++) { lin[i] = G.linea[i] ? 0 : -1; if (G.linea[i]) nl++; }
+  G.vLinee = !G.schizzo && nl ? contorni(lin, W, H, 1)[0] : null;
+  G.vZone = G.contorno && G.contorno.some((x) => x) ? contorni(G.zona, W, H, G.colZona.length) : null; // contorni solo se il pacchetto li prevede
+}
+
+// livello di dettaglio in base allo zoom: da lontano solo lo sketch, avvicinandosi contorni e numeri
+function dettaglio() { const z = G.vista.s / (G.fitS || G.vista.s); return Math.max(0, Math.min(1, (z - 1.4) / 1.4)); }
+// 1) base (raster): zone colorate (originale o colore piatto) e bianco; le linee sono vettoriali sopra
+function renderBase() {
+  const { W, H } = G, d = G.img.data, prog = G.op.progresso, rivela = $("optRivela").checked && G.orig;
+  if (G.soluzione && (G.orig || G.colorata)) { if (G.orig) { d.set(G.orig); G.ctx.putImageData(G.img, 0, 0); } else G.ctx.drawImage(G.colorata, 0, 0, W, H); return; }
+  for (let i = 0; i < W * H; i++) { const o = i * 4, z = G.zona[i], c = prog[z];
+    if (c && rivela && c === G.colZona[z]) { d[o] = G.orig[o]; d[o + 1] = G.orig[o + 1]; d[o + 2] = G.orig[o + 2]; }
+    else if (c) { const p = rgbDi(c); d[o] = p[0]; d[o + 1] = p[1]; d[o + 2] = p[2]; }
+    else { d[o] = d[o + 1] = d[o + 2] = 255; }
+    d[o + 3] = 255; }
+  G.ctx.putImageData(G.img, 0, 0);
+}
+// 2) zone del colore scelto, sempre visibili (anche senza zoom)
+function renderStrato() {
+  const { W, H } = G, d = G.simg.data, prog = G.op.progresso, sel = G.sel, p = rgbDi(sel); d.fill(0);
+  if ($("optEvidenzia").checked && !G.soluzione) for (let i = 0; i < W * H; i++) { const z = G.zona[i]; if (prog[z] || G.colZona[z] !== sel) continue; const o = i * 4;
+    d[o] = p[0]; d[o + 1] = p[1]; d[o + 2] = p[2]; d[o + 3] = 95; }
+  G.sctx.putImageData(G.simg, 0, 0);
+}
+// 3) strato vettoriale in coordinate dello schermo: linee dello sketch, contorni sottili, bordo delle zone scelte, numeri
+function renderVettori() {
+  const c = $("numeri"), a = $("area"), dpr = window.devicePixelRatio || 1, w = a.clientWidth, h = a.clientHeight;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  const g = c.getContext("2d"), v = G.vista, prog = G.op.progresso, f = dettaglio(); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  if (G.soluzione) return;
+  g.save(); g.setTransform(dpr * v.s, 0, 0, dpr * v.s, dpr * v.x, dpr * v.y); g.lineJoin = "round";
+  // contorni dei pezzi da colorare: sottili, compaiono avvicinandosi
+  if (G.vZone && f > 0) { g.strokeStyle = `rgba(110,110,110,${(0.65 * f).toFixed(3)})`; g.lineWidth = 0.9 / v.s;
+    for (let k = 0; k < G.vZone.length; k++) if (G.vZone[k] && !prog[k] && G.colZona[k] !== G.sel) g.stroke(G.vZone[k]); }
+  // zone del colore scelto: bordo colorato sempre visibile
+  if (G.vZone && $("optEvidenzia").checked) { g.strokeStyle = "rgba(180,70,47,0.9)"; g.lineWidth = 1.4 / v.s;
+    for (let k = 0; k < G.vZone.length; k++) if (G.vZone[k] && !prog[k] && G.colZona[k] === G.sel) g.stroke(G.vZone[k]); }
+  // linee dello sketch (forme piene, morbide)
+  if (G.vLinee) { g.fillStyle = $("optColLinee").value; g.fill(G.vLinee); }
+  g.restore();
+  // numeri: nitidi, solo quando leggibili
+  if (!$("optNumeri").checked || f <= 0) return;
+  g.textAlign = "center"; g.textBaseline = "middle"; g.globalAlpha = Math.min(1, 0.25 + f);
+  for (const z of G.op.dati.zone) { if (prog[z.id]) continue;
+    const num = String(z.colore), fs = Math.min(26, z.etichetta.raggio * (num.length > 2 ? 0.75 : 0.95) * v.s); if (fs < 9) continue;
+    const x = (z.etichetta.x + 0.5) * v.s + v.x, y = (z.etichetta.y + 0.5) * v.s + v.y; if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
+    g.font = `${z.colore === G.sel ? "600 " : ""}${fs.toFixed(1)}px system-ui, sans-serif`; g.fillStyle = z.colore === G.sel ? "#b4462f" : "#8a8a8a"; g.fillText(num, x, y); }
+  g.globalAlpha = 1;
+}
+function aggiornaDettaglio() { renderVettori(); }
+function render() { renderBase(); renderStrato(); renderVettori(); $("schizzo").style.display = G.soluzione ? "none" : "block"; }
+$("optColLinee").addEventListener("change", () => { try { localStorage.setItem("colora_colLinee", $("optColLinee").value); } catch (e) {} disegnaSchizzo(); renderVettori(); });
+try { const cl = localStorage.getItem("colora_colLinee"); if (cl) $("optColLinee").value = cl; } catch (e) {}
+function disegnaTavolozza() {
+  const rest = restanti(), box = $("tavolozza"); box.innerHTML = "";
+  G.pal.forEach((p, i) => { const n = i + 1, el = document.createElement("div"); el.className = "colore" + (n === G.sel ? " sel" : "") + (rest[n] === 0 ? " finito" : "");
+    el.innerHTML = `<i style="background:${p.hex}"></i><b>${n}</b><small>${p.matita ? p.matita.codice + " " + p.matita.nome : rest[n] + " zone"}</small>`;
+    el.onclick = () => { G.sel = n; disegnaTavolozza(); renderStrato(); aggiornaDettaglio(); }; box.appendChild(el); });
+  const s = box.querySelector(".sel"); if (s) s.scrollIntoView({ inline: "center", block: "nearest" });
+}
+function aggiornaPerc() { const tot = G.colZona.length; let ok = 0; for (let k = 0; k < tot; k++) if (G.op.progresso[k] === G.colZona[k]) ok++; const p = Math.round(100 * ok / Math.max(1, tot)); $("perc").textContent = p + "%"; if (ok === tot && tot) avviso("🎉 Completato!"); }
+let tSalva = null; function salvaProgressi() { clearTimeout(tSalva); tSalva = setTimeout(() => { G.op.aggiornato = Date.now(); dbOp("readwrite", (s) => s.put(G.op)); }, 400); }
+function avviso(t) { const a = $("avviso"); a.textContent = t; a.style.opacity = 1; clearTimeout(a._t); a._t = setTimeout(() => (a.style.opacity = 0), 1300); }
+function zonaIn(x, y) { x = Math.round(x); y = Math.round(y); const { W, H } = G;
+  for (let r = 0; r <= 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; const i = yy * W + xx; if (!G.linea[i]) return G.zona[i]; }
+  return -1; }
+function tocca(x, y) {
+  const z = zonaIn(x, y); if (z < 0) return;
+  if ($("optGuidato").checked && G.colZona[z] !== G.sel) { avviso(`Questa zona è il colore ${G.colZona[z]}`); return; }
+  if (G.op.progresso[z] === G.sel) return;
+  G.storia.push([z, G.op.progresso[z]]); if (G.storia.length > 500) G.storia.shift();
+  G.op.progresso[z] = G.sel; render(); aggiornaPerc(); salvaProgressi();
+  if (restanti()[G.sel] === 0) { const fatto = G.sel, n = prossimoNonFinito(fatto); if (n) { G.sel = n; renderStrato(); aggiornaDettaglio(); avviso(`Colore ${fatto} finito ✓ — ora il ${n}`); } else avviso("🎉 Tutti i colori completati!"); }
+  disegnaTavolozza(); if (navigator.vibrate) navigator.vibrate(8);
+}
+$("btnAnnulla").onclick = () => { const u = G.storia.pop(); if (!u) return; G.op.progresso[u[0]] = u[1]; render(); aggiornaPerc(); disegnaTavolozza(); salvaProgressi(); };
+const occhio = (on) => { if (!G.colorata && !G.orig) { if (on) avviso("Riferimento a colori non presente"); return; } G.soluzione = on; render(); };
+$("btnOcchio").addEventListener("pointerdown", () => occhio(true)); ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => $("btnOcchio").addEventListener(ev, () => G.soluzione && occhio(false)));
+$("btnIndietro").onclick = () => { salvaProgressi(); disegnaHome(); };
+$("btnMenu").onclick = () => { const m = $("menu"); m.style.display = m.style.display === "flex" ? "none" : "flex"; };
+["optEvidenzia", "optNumeri", "optRivela"].forEach((id) => $(id).addEventListener("change", render));
+$("btnCentra").onclick = () => { centra(); $("menu").style.display = "none"; };
+$("btnSalvaPng").onclick = () => { const c = document.createElement("canvas"); c.width = G.W; c.height = G.H; const g = c.getContext("2d"); g.drawImage($("tela"), 0, 0); if (G.schizzo) g.drawImage($("schizzo"), 0, 0, G.W, G.H); if (G.vLinee) { g.fillStyle = $("optColLinee").value; g.fill(G.vLinee); } c.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = G.op.nome + "_colorato.png"; a.click(); }); };
+$("btnAzzera").onclick = () => { if (!window.confirm("Cancellare tutti i colori di questo disegno?")) return; G.op.progresso.fill(0); G.storia = []; render(); aggiornaPerc(); disegnaTavolozza(); salvaProgressi(); $("menu").style.display = "none"; };
+
+// ---------- zoom e spostamento (dita, rotella, trascinamento) ----------
+let rafZoom = 0;
+function applicaVista() { $("foglio").style.transform = `translate(${G.vista.x}px,${G.vista.y}px) scale(${G.vista.s})`; if (!rafZoom) rafZoom = requestAnimationFrame(() => { rafZoom = 0; if (G.op) aggiornaDettaglio(); }); }
+function centra() { const a = $("area").getBoundingClientRect(), s = Math.min(a.width / G.W, a.height / G.H) * 0.96; G.fitS = s; G.vista = { s, x: (a.width - G.W * s) / 2, y: (a.height - G.H * s) / 2 }; applicaVista(); }
+function zoomIn(cx, cy, f) { const v = G.vista, s2 = Math.max(0.1, Math.min(12, v.s * f)); v.x = cx - (cx - v.x) * (s2 / v.s); v.y = cy - (cy - v.y) * (s2 / v.s); v.s = s2; applicaVista(); }
+(() => {
+  const area = $("area"), dita = new Map(); let inizio = null, mosso = false, dist0 = 0, s0 = 1, centro0 = null, v0 = null;
+  const rel = (e) => { const r = area.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  area.addEventListener("pointerdown", (e) => { area.setPointerCapture(e.pointerId); dita.set(e.pointerId, rel(e)); $("menu").style.display = "none";
+    if (dita.size === 1) { inizio = { ...rel(e), t: Date.now() }; mosso = false; v0 = { ...G.vista }; }
+    if (dita.size === 2) { const [a, b] = [...dita.values()]; dist0 = Math.hypot(a.x - b.x, a.y - b.y); s0 = G.vista.s; centro0 = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; v0 = { ...G.vista }; mosso = true; } });
+  area.addEventListener("pointermove", (e) => { if (!dita.has(e.pointerId)) return; dita.set(e.pointerId, rel(e));
+    if (dita.size === 1 && inizio) { const p = rel(e), dx = p.x - inizio.x, dy = p.y - inizio.y; if (Math.hypot(dx, dy) > 8) mosso = true; if (mosso) { G.vista.x = v0.x + dx; G.vista.y = v0.y + dy; applicaVista(); } }
+    if (dita.size === 2) { const [a, b] = [...dita.values()], d = Math.hypot(a.x - b.x, a.y - b.y), c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, s2 = Math.max(0.1, Math.min(12, s0 * d / dist0));
+      G.vista.s = s2; G.vista.x = c.x - (centro0.x - v0.x) * (s2 / s0); G.vista.y = c.y - (centro0.y - v0.y) * (s2 / s0); applicaVista(); } });
+  const fine = (e) => { if (!dita.has(e.pointerId)) return; dita.delete(e.pointerId);
+    if (dita.size === 0 && inizio && !mosso && Date.now() - inizio.t < 500) { const v = G.vista; tocca((inizio.x - v.x) / v.s, (inizio.y - v.y) / v.s); }
+    if (dita.size === 1) { const p = [...dita.values()][0]; inizio = { ...p, t: 0 }; v0 = { ...G.vista }; mosso = true; }
+    if (dita.size === 0) inizio = null; };
+  area.addEventListener("pointerup", fine); area.addEventListener("pointercancel", fine);
+  area.addEventListener("wheel", (e) => { e.preventDefault(); const p = rel(e); zoomIn(p.x, p.y, e.deltaY < 0 ? 1.15 : 1 / 1.15); }, { passive: false });
+  window.addEventListener("resize", () => { if (G.op && $("gioco").style.display === "flex") centra(); });
+})();
+
+// ---------- apertura diretta dal Laboratorio (app.html?id=...) e offline ----------
+(async () => {
+  const qs = new URLSearchParams(location.search), id = qs.get("id");
+  if (qs.get("incorporato")) { $("btnIndietro").style.display = "none"; document.body.classList.add("incorporato"); }
+  if (id) apri(id); else { disegnaHome(); if (!qs.get("incorporato")) mostraDalPC(false); }
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arte da colorare</title>
+<style>
+  :root{
+    --carta:#f6f1e7; --inchiostro:#1d1b18; --tenue:#6d665b; --linea:#d9cfbd;
+    --accento:#b4462f; --accento2:#2f5d62; --card:#fffdf8; --ok:#2f6b3a; --err:#a12a1c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--carta);color:var(--inchiostro);
+    font:15px/1.45 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+    padding:18px 24px;border-bottom:1px solid var(--linea)}
+  h1{margin:0;font-size:26px;letter-spacing:.3px;font-weight:600}
+  h1 span{color:var(--accento);font-style:italic}
+  .pw{display:flex;gap:8px;align-items:center;font-family:system-ui,sans-serif;font-size:13px}
+  input,select,textarea,button{font:inherit;font-family:system-ui,sans-serif;font-size:14px}
+  input[type=password],select,textarea{border:1px solid var(--linea);background:#fff;border-radius:6px;padding:7px 9px}
+  button{border:1px solid var(--inchiostro);background:var(--inchiostro);color:#fff;border-radius:6px;
+    padding:8px 14px;cursor:pointer}
+  button.sec{background:transparent;color:var(--inchiostro)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  main{max-width:1500px;margin:0 auto;padding:20px 24px 60px}
+  .controlli{display:flex;flex-wrap:wrap;gap:14px;align-items:end;margin-bottom:18px;font-family:system-ui,sans-serif}
+  .controlli label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--tenue);text-transform:uppercase;letter-spacing:.6px}
+  details{margin-bottom:18px;font-family:system-ui,sans-serif;font-size:13px}
+  details textarea{width:100%;min-height:90px;margin:4px 0 10px}
+  .griglia{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:1000px){.griglia{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--linea);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .card h2{margin:0;font-size:18px;font-weight:600;display:flex;gap:8px;align-items:baseline}
+  .card h2 small{font-family:system-ui,sans-serif;font-size:11px;color:var(--tenue);font-weight:400;letter-spacing:.6px;text-transform:uppercase}
+  .tela{aspect-ratio:3/4;border:1px dashed var(--linea);border-radius:8px;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;background:repeating-linear-gradient(45deg,#fbf8f1,#fbf8f1 10px,#f7f2e8 10px,#f7f2e8 20px);position:relative}
+  .tela img{max-width:100%;max-height:100%;object-fit:contain;background:#fff}
+  .tela .vuoto{color:var(--tenue);font-family:system-ui,sans-serif;font-size:13px;text-align:center;padding:20px}
+  .tela.drop{border-color:var(--accento);border-style:solid}
+  .tela .carica{position:absolute;inset:0;background:rgba(246,241,231,.85);display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:10px;font-family:system-ui,sans-serif;font-size:13px}
+  .tela.lavoro .carica{display:flex}
+  .spin{width:28px;height:28px;border:3px solid var(--linea);border-top-color:var(--accento);border-radius:50%;animation:g 1s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+  .azioni{display:flex;flex-wrap:wrap;gap:8px}
+  .slider{display:flex;gap:10px;align-items:center;font-family:system-ui,sans-serif;font-size:12px;color:var(--tenue)}
+  .slider input{flex:1}
+  #log{margin-top:18px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;color:var(--tenue);
+    max-height:180px;overflow:auto;border-top:1px solid var(--linea);padding-top:10px}
+  .ok{color:var(--ok)} .err{color:var(--err)}
+  .principale{background:var(--accento);border-color:var(--accento)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Arte <span>da colorare</span> <a href="/" style="font-size:14px;color:var(--accento2);font-family:system-ui">← Laboratorio</a></h1>
+  <div class="pw">
+    <label for="pw">Password</label>
+    <input type="password" id="pw" placeholder="password app" autocomplete="current-password">
+    <button class="sec" id="btnCheck">Verifica</button>
+    <span id="stato"></span>
+  </div>
+</header>
+
+<main>
+  <div class="controlli">
+    <label>Modello Gemini
+      <select id="modello">
+        <option value="gemini-nano-banana-2.1">Nano Banana 2.1 (consigliato)</option>
+        <option value="gemini-3.1-flash-image">Nano Banana 2 (3.1 Flash Image)</option>
+        <option value="gemini-3-pro-image">Nano Banana Pro (qualità max, costa di più)</option>
+        <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite (economico)</option>
+        <option value="gemini-2.5-flash-image">Nano Banana (vecchio)</option>
+      </select>
+    </label>
+    <label>Stile colorata
+      <select id="stile">
+        <option value="fedele">Fedele all'originale</option>
+        <option value="arricchita">Arricchita (più colori e decorazioni)</option>
+      </select>
+    </label>
+    <label>Formato
+      <select id="formato">
+        <option value="auto">Come l'originale</option>
+        <option value="3:4">Verticale 3:4</option>
+        <option value="2:3">Verticale 2:3</option>
+        <option value="4:3">Orizzontale 4:3</option>
+        <option value="3:2">Orizzontale 3:2</option>
+        <option value="1:1">Quadrato</option>
+      </select>
+    </label>
+    <label>Risoluzione
+      <select id="risoluzione">
+        <option value="1K">1K (economica)</option>
+        <option value="2K" selected>2K (buona per stampa A4)</option>
+        <option value="4K">4K (costosa)</option>
+      </select>
+    </label>
+    <button class="principale" id="btnTutto" disabled>Genera tutto ▸</button>
+  </div>
+
+  <details>
+    <summary>Prompt (modificabili — in inglese i modelli rendono in modo più costante)</summary>
+    <div>1 · Opera → illustrazione colorata</div>
+    <textarea id="promptColore"></textarea>
+    <div>2 · Illustrazione → pagina da colorare</div>
+    <textarea id="promptSketch"></textarea>
+    <div>3 · Originale → pagina da colorare (diretto, segue lo stile scelto)</div>
+    <textarea id="promptDiretto"></textarea>
+    <button class="sec" id="btnResetPrompt">Ripristina prompt predefiniti</button>
+  </details>
+
+  <div class="griglia">
+    <section class="card">
+      <h2>1 <small>Opera originale</small></h2>
+      <div class="tela" id="telaOrig">
+        <div class="vuoto">Trascina qui l'immagine<br>oppure usa il pulsante sotto</div>
+      </div>
+      <div class="azioni">
+        <input type="file" id="file" accept="image/*" hidden>
+        <button class="sec" id="btnFile">Scegli immagine…</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2 <small>Illustrazione colorata</small></h2>
+      <div class="tela" id="telaColore">
+        <div class="vuoto">Qui comparirà la versione colorata</div>
+        <div class="carica"><div class="spin"></div><div>Gemini sta dipingendo… (20–60 s)</div></div>
+      </div>
+      <div class="azioni">
+        <button id="btnColore" disabled>Genera colorata</button>
+        <button class="sec" id="dlColore" disabled>Scarica PNG</button>
+        <button class="sec" id="prColore" disabled>Stampa A4</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3 <small>Da colorare</small></h2>
+      <div class="tela" id="telaSketch">
+        <div class="vuoto">Qui comparirà il disegno da colorare</div>
+        <div class="carica"><div class="spin"></div><div>Sto tracciando le linee…</div></div>
+      </div>
+      <div class="azioni">
+        <button class="principale" id="btnDiretto" disabled title="Una sola chiamata AI: dall'opera originale al disegno">Sketch diretto dall'originale</button>
+        <button id="btnSketchAI" disabled>Sketch dalla colorata</button>
+        <button class="sec" id="btnSketchLocale" disabled title="Gratis, istantaneo, senza AI">Sketch senza AI</button>
+        <button class="sec" id="dlSketch" disabled>Scarica PNG</button>
+        <button class="sec" id="prSketch" disabled>Stampa A4</button>
+      </div>
+      <div class="slider">Dettaglio <input type="range" id="slDettaglio" min="5" max="31" step="2" value="15"></div>
+      <div class="slider">Pulizia <input type="range" id="slPulizia" min="2" max="25" value="10"></div>
+      <div class="slider">Spessore <input type="range" id="slSpessore" min="1" max="4" value="2"></div>
+    </section>
+  </div>
+
+  <div id="log"></div>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+const PROMPT_FEDELE = `Recreate this exact painting as a clean, high-quality colored illustration, staying as faithful to the original as possible. If the photo shows a picture frame, wall or anything around the painting, ignore it and reproduce only the painted canvas, filling the whole image. Keep exactly the same composition, framing, figures, poses, anatomy, facial features, expressions, proportions, objects and background elements: do not add, remove, move or reinterpret anything. Keep the original color palette, lighting direction, contrast, mood and color relationships; only make the colors slightly cleaner and more luminous, as if the painting had been professionally restored. Define the shapes with thin, clean dark outlines and smooth shading. No new decorative elements, no stylization of clouds or landscape, no text, no signature, no border.`;
+const PROMPT_COLORE = `Redraw this artwork as a vibrant, richly colored illustration, like a high-quality illustrated storybook page: clean bold black outlines around every shape, bright saturated colors, smooth soft shading. Keep exactly the same composition, characters, poses, framing and overall scene. Enrich it with tasteful decorative details consistent with the artwork (patterned fabrics, flowers, stylized waves, detailed foliage). No text, no signature, no border, no frame.`;
+const PROMPT_DIRETTO_FEDELE = `Create a faithful line-art coloring page of this painting, like a professional coloring book drawing traced over the original: clean, smooth, confident black outlines on a pure white background. If the photo shows a picture frame, wall or anything around the painting, ignore it and draw only the painted scene, filling the whole page. Follow the original exactly: same composition, framing, pose, proportions, anatomy, face and expression, hands, clothing folds, hair and background landscape; do not add, remove or invent anything and do not stylize. Draw the face with delicate, accurate lines (eyes, nose, mouth) so the person is recognizable. Use a medium, fairly uniform line weight, slightly thicker for the main contours; light interior lines only where needed for folds, hair and landscape shapes, leaving large open areas to color. No shading, no hatching, no gray tones, no color, no solid black areas, no border, no text.`;
+const PROMPT_DIRETTO_ARRICCHITO = `Turn this painting into a highly detailed, high-quality printable coloring book page for adults: clean black line art on a pure white background. If the photo shows a picture frame, wall or anything around the painting, ignore it and draw only the painted scene, filling the whole page. Keep the same main subject, composition, poses, anatomy and faces. Render the sky as decorative stylized swirling clouds and enrich the foreground with small flowers, leaves and plants, giving many closed areas to color. Clear, continuous, closed outlines with slightly varied line weight; fine interior lines for anatomy, hair, drapery folds and wood grain. No shading, no hatching, no gray tones, no color, no solid black areas. No border, no added text.`;
+const PROMPT_SKETCH = `Convert this illustration into a printable coloring book page: pure black line art on a pure white background. Clean, continuous, closed outlines of medium thickness, keeping all shapes, faces, hair strands and decorative details. No shading, no hatching, no gray tones, no color, no solid black fill areas. Same composition and framing. No text, no border, no frame.`;
+
+const RAPPORTI = ["1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9"];
+
+const stato = { orig: null, origRatio: "3:4", colore: null, sketch: null };
+
+// ---------- utilità ----------
+function log(msg, cls) {
+  const el = $("log");
+  const riga = document.createElement("div");
+  if (cls) riga.className = cls;
+  riga.textContent = new Date().toLocaleTimeString() + "  " + msg;
+  el.prepend(riga);
+}
+function salva(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function leggi(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+function rapportoVicino(w, h) {
+  const r = w / h; let best = "1:1", d = 1e9;
+  for (const s of RAPPORTI) { const [a,b] = s.split(":").map(Number); const x = Math.abs(Math.log(r/(a/b))); if (x < d) { d = x; best = s; } }
+  return best;
+}
+
+function caricaImg(src) {
+  return new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; });
+}
+
+// ridimensiona e converte in JPEG base64 (meno costi e upload più veloce)
+async function aBase64(dataUrl, maxLato = 1600) {
+  const img = await caricaImg(dataUrl);
+  const s = Math.min(1, maxLato / Math.max(img.width, img.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+  const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0,0,c.width,c.height);
+  g.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.92).split(",")[1];
+}
+
+function mostra(telaId, dataUrl) {
+  const t = $(telaId);
+  t.querySelectorAll("img,.vuoto").forEach((n) => n.remove());
+  const img = new Image(); img.src = dataUrl; t.prepend(img);
+}
+function lavoro(telaId, on) { $(telaId).classList.toggle("lavoro", on); }
+
+function aggiornaPulsanti() {
+  const occupato = document.querySelector(".tela.lavoro") !== null;
+  $("btnTutto").disabled = !stato.orig || occupato;
+  $("btnColore").disabled = !stato.orig || occupato;
+  $("btnSketchAI").disabled = !stato.colore || occupato;
+  $("btnDiretto").disabled = !stato.orig || occupato;
+  $("btnSketchLocale").disabled = !stato.colore || occupato;
+  $("dlColore").disabled = $("prColore").disabled = !stato.colore;
+  $("dlSketch").disabled = $("prSketch").disabled = !stato.sketch;
+}
+
+// ---------- chiamata Gemini ----------
+// Cerca ricorsivamente un'immagine nella risposta (funziona sia con l'API
+// "interactions" sia con la vecchia "generateContent").
+function estraiImmagine(obj) {
+  let trovata = null; const testi = [];
+  (function giro(o) {
+    if (!o || typeof o !== "object") return;
+    if (Array.isArray(o)) { o.forEach(giro); return; }
+    if (o.type === "image" && typeof o.data === "string") trovata = { data: o.data, mime: o.mime_type || "image/png" };
+    const inl = o.inlineData || o.inline_data;
+    if (inl && typeof inl.data === "string") trovata = { data: inl.data, mime: inl.mimeType || inl.mime_type || "image/png" };
+    if (typeof o.text === "string") testi.push(o.text);
+    for (const k in o) if (k !== "data") giro(o[k]);
+  })(obj);
+  return { img: trovata, testo: testi.join(" ").trim() };
+}
+
+function corpoInteractions(model, prompt, b64, ratio, size, conFormato) {
+  const body = { model, input: [ { type: "text", text: prompt }, { type: "image", mime_type: "image/jpeg", data: b64 } ] };
+  if (conFormato) {
+    body.response_format = { type: "image", mime_type: "image/jpeg", image_size: size };
+    if (ratio) body.response_format.aspect_ratio = ratio;
+  }
+  return body;
+}
+function corpoGenerateContent(prompt, b64, ratio, size) {
+  const imageConfig = { imageSize: size }; if (ratio) imageConfig.aspectRatio = ratio;
+  return {
+    contents: [{ role: "user", parts: [ { text: prompt }, { inline_data: { mime_type: "image/jpeg", data: b64 } } ] }],
+    generationConfig: { responseModalities: ["TEXT", "IMAGE"], imageConfig },
+  };
+}
+
+async function chiamaGemini(prompt, b64, ratio) {
+  const model = $("modello").value, size = $("risoluzione").value;
+  const tentativi = [
+    { nome: "interactions", api: "interactions", body: () => corpoInteractions(model, prompt, b64, ratio, size, true) },
+    { nome: "interactions (senza formato)", api: "interactions", body: () => corpoInteractions(model, prompt, b64, ratio, size, false) },
+    { nome: "generateContent", api: "generateContent", body: () => corpoGenerateContent(prompt, b64, ratio, size) },
+  ];
+  // se un metodo ha già funzionato, provalo per primo
+  const preferito = leggi("metodoOk");
+  tentativi.sort((a, b) => (b.nome === preferito) - (a.nome === preferito));
+
+  let ultimoErrore = "";
+  for (const t of tentativi) {
+    const r = await fetch(`/api/gemini?model=${encodeURIComponent(model)}&api=${t.api}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-app-password": $("pw").value },
+      body: JSON.stringify(t.body()),
+    });
+    const testo = await r.text();
+    let dati = null; try { dati = JSON.parse(testo); } catch (e) {}
+    if (r.status === 401) throw new Error("Password errata");
+    if (!r.ok) {
+      const msg = (dati && (dati.error?.message || dati.error)) || testo.slice(0, 300);
+      ultimoErrore = `[${t.nome}] HTTP ${r.status}: ${msg}`;
+      log(ultimoErrore, "err");
+      if (r.status === 400 || r.status === 404) continue; // formato richiesta non accettato: prova il successivo
+      throw new Error(ultimoErrore);
+    }
+    const { img, testo: txt } = estraiImmagine(dati);
+    if (img) { salva("metodoOk", t.nome); return "data:" + img.mime + ";base64," + img.data; }
+    const blocco = JSON.stringify(dati).match(/"(blockReason|finishReason|finish_reason|block_reason)"\s*:\s*"([A-Z_]+)"/);
+    throw new Error("Nessuna immagine restituita" + (blocco ? ` (${blocco[1]}: ${blocco[2]} — probabile filtro di sicurezza)` : "") + (txt ? ` — risposta: ${txt.slice(0, 300)}` : ""));
+  }
+  throw new Error(ultimoErrore || "Richiesta non riuscita");
+}
+
+// ---------- passi ----------
+async function generaColore() {
+  if (!stato.orig) return;
+  lavoro("telaColore", true); aggiornaPulsanti();
+  try {
+    const ratio = $("formato").value === "auto" ? stato.origRatio : $("formato").value;
+    log(`Genero l'illustrazione colorata (${$("modello").value}, ${ratio}, ${$("risoluzione").value})…`);
+    const b64 = await aBase64(stato.orig);
+    stato.colore = await chiamaGemini($("promptColore").value, b64, ratio);
+    mostra("telaColore", stato.colore);
+    log("Illustrazione colorata pronta.", "ok");
+    return true;
+  } catch (e) { log("Errore: " + e.message, "err"); return false; }
+  finally { lavoro("telaColore", false); aggiornaPulsanti(); }
+}
+
+async function generaSketchDiretto() {
+  if (!stato.orig) return;
+  lavoro("telaSketch", true); aggiornaPulsanti();
+  try {
+    const ratio = $("formato").value === "auto" ? stato.origRatio : $("formato").value;
+    log(`Genero la pagina da colorare direttamente dall'originale (${$("stile").value}, ${ratio})…`);
+    const b64 = await aBase64(stato.orig);
+    stato.sketch = await chiamaGemini($("promptDiretto").value, b64, ratio);
+    mostra("telaSketch", stato.sketch);
+    log("Pagina da colorare pronta.", "ok");
+  } catch (e) { log("Errore: " + e.message, "err"); }
+  finally { lavoro("telaSketch", false); aggiornaPulsanti(); }
+}
+
+async function generaSketchAI() {
+  if (!stato.colore) return;
+  lavoro("telaSketch", true); aggiornaPulsanti();
+  try {
+    const img = await caricaImg(stato.colore);
+    const ratio = rapportoVicino(img.width, img.height);
+    log("Genero la pagina da colorare con AI…");
+    const b64 = await aBase64(stato.colore);
+    stato.sketch = await chiamaGemini($("promptSketch").value, b64, ratio);
+    mostra("telaSketch", stato.sketch);
+    log("Pagina da colorare pronta.", "ok");
+  } catch (e) { log("Errore: " + e.message, "err"); }
+  finally { lavoro("telaSketch", false); aggiornaPulsanti(); }
+}
+
+// Sketch senza AI: soglia adattiva sull'illustrazione colorata (gratis, nel browser)
+async function generaSketchLocale() {
+  if (!stato.colore) return;
+  const img = await caricaImg(stato.colore);
+  const s = Math.min(1, 2400 / Math.max(img.width, img.height));
+  const W = Math.round(img.width * s), H = Math.round(img.height * s);
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d"); g.drawImage(img, 0, 0, W, H);
+  const px = g.getImageData(0, 0, W, H), d = px.data, N = W * H;
+
+  // scala di grigi + leggera sfocatura 3x3
+  const gr = new Float32Array(N);
+  for (let i = 0; i < N; i++) gr[i] = 0.299*d[i*4] + 0.587*d[i*4+1] + 0.114*d[i*4+2];
+  const bl = new Float32Array(N);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let sum = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const xx = x+dx, yy = y+dy; if (xx>=0 && yy>=0 && xx<W && yy<H) { sum += gr[yy*W+xx]; n++; }
+    }
+    bl[y*W+x] = sum / n;
+  }
+  // immagine integrale per la media locale
+  const I = new Float64Array((W+1)*(H+1));
+  for (let y = 1; y <= H; y++) { let riga = 0; for (let x = 1; x <= W; x++) { riga += bl[(y-1)*W + x-1]; I[y*(W+1)+x] = I[(y-1)*(W+1)+x] + riga; } }
+  const r = (Number($("slDettaglio").value) / 2) | 0, C = Number($("slPulizia").value);
+  let nero = new Uint8Array(N);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const x0 = Math.max(0,x-r), y0 = Math.max(0,y-r), x1 = Math.min(W,x+r+1), y1 = Math.min(H,y+r+1);
+    const m = (I[y1*(W+1)+x1] - I[y0*(W+1)+x1] - I[y1*(W+1)+x0] + I[y0*(W+1)+x0]) / ((x1-x0)*(y1-y0));
+    nero[y*W+x] = bl[y*W+x] < m - C ? 1 : 0;
+  }
+  // rimuove i puntini isolati
+  const pulito = new Uint8Array(N);
+  for (let y = 1; y < H-1; y++) for (let x = 1; x < W-1; x++) {
+    const i = y*W+x; if (!nero[i]) continue;
+    let v = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) v += nero[i + dy*W + dx];
+    if (v >= 4) pulito[i] = 1;
+  }
+  nero = pulito;
+  // ispessimento linee
+  const sp = Number($("slSpessore").value) - 1;
+  let fin = nero;
+  if (sp > 0) {
+    fin = new Uint8Array(N);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (!nero[y*W+x]) continue;
+      for (let dy = -sp; dy <= sp; dy++) for (let dx = -sp; dx <= sp; dx++) {
+        const xx = x+dx, yy = y+dy; if (xx>=0 && yy>=0 && xx<W && yy<H) fin[yy*W+xx] = 1;
+      }
+    }
+  }
+  for (let i = 0; i < N; i++) { const v = fin[i] ? 0 : 255; d[i*4] = d[i*4+1] = d[i*4+2] = v; d[i*4+3] = 255; }
+  g.putImageData(px, 0, 0);
+  stato.sketch = c.toDataURL("image/png");
+  mostra("telaSketch", stato.sketch);
+  aggiornaPulsanti();
+  log("Sketch senza AI pronto (regola i cursori e ripremi per affinarlo).", "ok");
+}
+
+async function generaTutto() {
+  const ok = await generaColore();
+  if (ok) await generaSketchAI();
+}
+
+// ---------- download / stampa ----------
+function scarica(dataUrl, nome) {
+  const a = document.createElement("a"); a.href = dataUrl; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+}
+async function aPng(dataUrl) {
+  if (dataUrl.startsWith("data:image/png")) return dataUrl;
+  const img = await caricaImg(dataUrl); const c = document.createElement("canvas");
+  c.width = img.width; c.height = img.height; c.getContext("2d").drawImage(img, 0, 0); return c.toDataURL("image/png");
+}
+async function stampa(dataUrl) {
+  const img = await caricaImg(dataUrl);
+  const orient = img.width > img.height ? "landscape" : "portrait";
+  const w = window.open("", "_blank");
+  if (!w) { log("Il browser ha bloccato la finestra di stampa: consenti i popup.", "err"); return; }
+  w.document.write(`<!DOCTYPE html><html><head><title>Stampa</title><style>
+    @page{size:A4 ${orient};margin:8mm} html,body{margin:0;height:100%}
+    body{display:flex;align-items:center;justify-content:center}
+    img{max-width:100%;max-height:100vh;object-fit:contain}</style></head>
+    <body><img src="${dataUrl}" onload="setTimeout(()=>window.print(),300)"></body></html>`);
+  w.document.close();
+}
+const nomeBase = () => (stato.nomeFile || "opera").replace(/\.[^.]+$/, "");
+
+// ---------- caricamento immagine ----------
+function apriFile(f) {
+  if (!f || !f.type.startsWith("image/")) { log("Il file non è un'immagine.", "err"); return; }
+  stato.nomeFile = f.name;
+  const fr = new FileReader();
+  fr.onload = async () => {
+    try {
+      const img = await caricaImg(fr.result);
+      stato.orig = fr.result; stato.origRatio = rapportoVicino(img.width, img.height);
+      stato.colore = stato.sketch = null;
+      mostra("telaOrig", fr.result);
+      log(`Caricata: ${f.name} (${img.width}×${img.height}, formato più vicino ${stato.origRatio})`);
+    } catch (e) { log("Il browser non riesce a leggere questo formato. Prova JPG o PNG.", "err"); }
+    aggiornaPulsanti();
+  };
+  fr.readAsDataURL(f);
+}
+
+// ---------- eventi ----------
+$("btnFile").onclick = () => $("file").click();
+$("file").onchange = (e) => apriFile(e.target.files[0]);
+const to = $("telaOrig");
+["dragenter","dragover"].forEach((ev) => to.addEventListener(ev, (e) => { e.preventDefault(); to.classList.add("drop"); }));
+["dragleave","drop"].forEach((ev) => to.addEventListener(ev, (e) => { e.preventDefault(); to.classList.remove("drop"); }));
+to.addEventListener("drop", (e) => apriFile(e.dataTransfer.files[0]));
+
+$("btnTutto").onclick = generaTutto;
+$("btnColore").onclick = generaColore;
+$("btnSketchAI").onclick = generaSketchAI;
+$("btnDiretto").onclick = generaSketchDiretto;
+$("btnSketchLocale").onclick = generaSketchLocale;
+$("dlColore").onclick = async () => scarica(await aPng(stato.colore), nomeBase() + "_colorata.png");
+$("dlSketch").onclick = async () => scarica(await aPng(stato.sketch), nomeBase() + "_da_colorare.png");
+$("prColore").onclick = () => stampa(stato.colore);
+$("prSketch").onclick = () => stampa(stato.sketch);
+
+$("btnCheck").onclick = async () => {
+  salva("pw", $("pw").value);
+  try {
+    const r = await fetch("/api/check", { headers: { "x-app-password": $("pw").value } });
+    const j = await r.json();
+    if (!r.ok) { $("stato").innerHTML = '<span class="err">✕ password errata</span>'; return; }
+    $("stato").innerHTML = j.chiave ? '<span class="ok">✓ collegato</span>' : '<span class="err">chiave Gemini mancante sul server</span>';
+  } catch (e) { $("stato").innerHTML = '<span class="err">server non raggiungibile</span>'; }
+};
+
+// prompt e preferenze salvati
+const promptStile = () => ($("stile").value === "arricchita" ? PROMPT_COLORE : PROMPT_FEDELE);
+const chiaveStile = () => "promptColore_" + $("stile").value;
+const promptDir = () => ($("stile").value === "arricchita" ? PROMPT_DIRETTO_ARRICCHITO : PROMPT_DIRETTO_FEDELE);
+const chiaveDir = () => "promptDiretto_" + $("stile").value;
+const v0 = leggi("stile"); if (v0) $("stile").value = v0;
+$("promptColore").value = leggi(chiaveStile()) || promptStile();
+$("promptSketch").value = leggi("promptSketch") || PROMPT_SKETCH;
+$("promptDiretto").value = leggi(chiaveDir()) || promptDir();
+$("promptDiretto").oninput = (e) => salva(chiaveDir(), e.target.value);
+$("promptColore").oninput = (e) => salva(chiaveStile(), e.target.value);
+$("promptSketch").oninput = (e) => salva("promptSketch", e.target.value);
+$("stile").onchange = (e) => { salva("stile", e.target.value); $("promptColore").value = leggi(chiaveStile()) || promptStile(); $("promptDiretto").value = leggi(chiaveDir()) || promptDir(); };
+$("btnResetPrompt").onclick = () => {
+  $("promptColore").value = promptStile(); $("promptSketch").value = PROMPT_SKETCH;
+  salva(chiaveStile(), promptStile()); salva("promptSketch", PROMPT_SKETCH);
+  $("promptDiretto").value = promptDir(); salva(chiaveDir(), promptDir());
+};
+["modello","formato","risoluzione"].forEach((id) => {
+  const v = leggi(id); if (v) $(id).value = v;
+  $(id).onchange = (e) => salva(id, e.target.value);
+});
+$("pw").value = leggi("pw") || "";
+log("Pronto. Inserisci la password, premi Verifica e carica un'opera.");
+</script>
+</body>
+</html>

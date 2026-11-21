@@ -1,0 +1,20 @@
+// Adattatore per Vercel: riusa lo stesso worker di Cloudflare (src/worker.js).
+// vercel.json manda ogni /api/<percorso> qui come /api/proxy?__path=<percorso>.
+// Variabili da impostare su Vercel: GEMINI_API_KEY, APP_PASSWORD.
+import worker from '../src/worker.js';
+
+export const config = { runtime: 'edge' };
+
+export default async function handler(req) {
+  const url = new URL(req.url);
+  const path = url.searchParams.get('__path') || '';
+  url.searchParams.delete('__path');
+  url.pathname = '/api/' + path;
+  const inner = new Request(url, req);
+  const env = {
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    APP_PASSWORD: process.env.APP_PASSWORD,
+    ASSETS: { fetch: () => new Response('Not found', { status: 404 }) },
+  };
+  return worker.fetch(inner, env);
+}
