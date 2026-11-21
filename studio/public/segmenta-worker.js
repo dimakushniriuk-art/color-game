@@ -83,11 +83,11 @@ function moda(lab, w, h, passi) {
   }
 }
 
-// componenti connesse sulla mappa "lab" (4-connessione)
+// componenti connesse sulla mappa "lab" (4-connessione); i pixel con lab < 0 (linee) restano -1
 function componenti(lab, w, h, reg, stack) {
   const N = w * h; reg.fill(-1); const area = [], col = []; let n = 0;
   for (let i = 0; i < N; i++) {
-    if (reg[i] !== -1) continue;
+    if (reg[i] !== -1 || lab[i] < 0) continue;
     const c = lab[i]; let sp = 0, a = 0; stack[sp++] = i; reg[i] = n;
     while (sp) { const p = stack[--sp]; a++; const x = p % w;
       if (x > 0 && reg[p - 1] === -1 && lab[p - 1] === c) { reg[p - 1] = n; stack[sp++] = p - 1; }
@@ -99,36 +99,161 @@ function componenti(lab, w, h, reg, stack) {
   return { n, area, col };
 }
 
-// fonde i pezzi più piccoli di minArea nel vicino con cui condividono più bordo
-function fondiPiccoli(lab, w, h, minArea, P, bar = -1) {
-  const N = w * h, reg = new Int32Array(N), stack = new Int32Array(N);
-  let comp;
-  for (let it = 0; it < 10; it++) {
-    P(`Unione dei pezzi piccoli (${it + 1})…`, 72 + it);
-    comp = componenti(lab, w, h, reg, stack);
-    const small = new Uint8Array(comp.n); let ns = 0;
-    for (let r = 0; r < comp.n; r++) if (comp.area[r] < minArea && comp.col[r] !== bar) { small[r] = 1; ns++; }
+// i pixel ancora senza pezzo (linee dello sketch) passano al pezzo più vicino: nessun buco, nessuna sovrapposizione
+function riempiVuoti(reg, w, h) {
+  const N = w * h; let q = new Int32Array(N), qn = 0;
+  for (let i = 0; i < N; i++) if (reg[i] >= 0) q[qn++] = i;
+  if (!qn) { reg.fill(0); return; }
+  while (qn) { const nq = new Int32Array(qn * 4 + 4); let nn = 0;
+    for (let k = 0; k < qn; k++) { const p = q[k], x = p % w, r = reg[p];
+      if (x > 0 && reg[p - 1] < 0) { reg[p - 1] = r; nq[nn++] = p - 1; }
+      if (x < w - 1 && reg[p + 1] < 0) { reg[p + 1] = r; nq[nn++] = p + 1; }
+      if (p >= w && reg[p - w] < 0) { reg[p - w] = r; nq[nn++] = p - w; }
+      if (p < N - w && reg[p + w] < 0) { reg[p + w] = r; nq[nn++] = p + w; } }
+    q = nq; qn = nn; }
+}
+
+// rinumera i pezzi 0..n-1 dopo le unioni
+function compatta(reg, N) {
+  const map = new Map(); let n = 0;
+  for (let i = 0; i < N; i++) { let v = map.get(reg[i]); if (v === undefined) { v = n++; map.set(reg[i], v); } reg[i] = v; }
+  return n;
+}
+
+// raggio del cerchio più grande che sta dentro ogni pezzo (distanza dal bordo, in pixel)
+function raggioMax(reg, w, h, n) {
+  const N = w * h, d = new Float32Array(N), INF = 1e9, out = new Float32Array(n);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, r = reg[i];
+    d[i] = (x === 0 || y === 0 || x === w - 1 || y === h - 1 || reg[i - 1] !== r || reg[i + 1] !== r || reg[i - w] !== r || reg[i + w] !== r) ? 1 : INF; }
+  for (let y = 1; y < h; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x; if (d[i] > 1) d[i] = Math.min(d[i], d[i - 1] + 1, d[i - w] + 1, d[i - w - 1] + 1.4142, d[i - w + 1] + 1.4142); }
+  for (let y = h - 2; y >= 0; y--) for (let x = w - 2; x > 0; x--) { const i = y * w + x; if (d[i] > 1) d[i] = Math.min(d[i], d[i + 1] + 1, d[i + w] + 1, d[i + w + 1] + 1.4142, d[i + w - 1] + 1.4142); }
+  for (let i = 0; i < N; i++) if (d[i] > out[reg[i]]) out[reg[i]] = d[i];
+  return out;
+}
+
+// confini condivisi tra pezzi: [lungo una linea dello sketch, fuori dalle linee]
+function adiacenze(reg, w, h, n, linea) {
+  const m = new Map();
+  const add = (a, b, sulla) => { const k = a < b ? a * n + b : b * n + a; let e = m.get(k); if (!e) { e = [0, 0]; m.set(k, e); } e[sulla ? 0 : 1]++; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, a = reg[i];
+    if (x < w - 1) { const b = reg[i + 1]; if (a !== b) add(a, b, linea[i] || linea[i + 1]); }
+    if (y < h - 1) { const b = reg[i + w]; if (a !== b) add(a, b, linea[i] || linea[i + w]); } }
+  const vic = Array.from({ length: n }, () => []);
+  for (const [k, e] of m) { const a = Math.floor(k / n), b = k - a * n; vic[a].push(b, e[0], e[1]); vic[b].push(a, e[0], e[1]); }
+  return vic;
+}
+
+/**
+ * Unisce i pezzi troppo piccoli o troppo sottili al vicino più adatto:
+ * stesso lato della linea dello sketch, confine più lungo, colore più simile.
+ * Attraversa una linea solo se il pezzo è chiuso interamente da linee.
+ */
+function unisciPiccoli(reg, w, h, linea, L, A, B, req, P, pct0) {
+  const N = w * h; let n = compatta(reg, N);
+  for (let giro = 0; giro < 40; giro++) {
+    P(`Pezzi troppo piccoli: unione (${giro + 1})…`, Math.min(pct0 + giro, pct0 + 12));
+    const area = new Float64Array(n), sL = new Float64Array(n), sA = new Float64Array(n), sB = new Float64Array(n), sX = new Float64Array(n), sY = new Float64Array(n);
+    for (let i = 0; i < N; i++) { const r = reg[i]; area[r]++; sL[r] += L[i]; sA[r] += A[i]; sB[r] += B[i]; sX[r] += i % w; sY[r] += (i / w) | 0; }
+    const rmax = req.spessore ? raggioMax(reg, w, h, n) : null;
+    const minimo = new Float64Array(n), piccolo = new Uint8Array(n); let ns = 0;
+    for (let r = 0; r < n; r++) {
+      const m = req.minimoIn(sX[r] / area[r], sY[r] / area[r]); minimo[r] = m;
+      if (area[r] < m || (rmax && rmax[r] < req.raggio(m))) { piccolo[r] = 1; ns++; }
+    }
     if (!ns) break;
-    const adj = new Map();
-    const add = (a, b) => { if (small[a]) { const k = a * comp.n + b; adj.set(k, (adj.get(k) || 0) + 1); } };
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, a = reg[i];
-      if (x < w - 1) { const b = reg[i + 1]; if (a !== b) { add(a, b); add(b, a); } }
-      if (y < h - 1) { const b = reg[i + w]; if (a !== b) { add(a, b); add(b, a); } } }
-    const best = new Int32Array(comp.n).fill(-1), bestC = new Float64Array(comp.n);
-    for (const [k, c] of adj) { const a = Math.floor(k / comp.n), b = k - a * comp.n; if (comp.col[b] === bar) continue; const s = c + comp.area[b] * 1e-9; if (s > bestC[a]) { bestC[a] = s; best[a] = b; } }
-    let changed = 0;
-    for (let i = 0; i < N; i++) { const r = reg[i]; if (small[r] && best[r] >= 0) { lab[i] = comp.col[best[r]]; changed++; } }
-    if (!changed) break;
+    const vic = adiacenze(reg, w, h, n, linea);
+    const padre = new Int32Array(n); for (let r = 0; r < n; r++) padre[r] = r;
+    const trova = (r) => { while (padre[r] !== r) { padre[r] = padre[padre[r]]; r = padre[r]; } return r; };
+    const ordine = []; for (let r = 0; r < n; r++) if (piccolo[r]) ordine.push(r);
+    ordine.sort((a, b) => area[a] - area[b]);
+    let uniti = 0;
+    for (const r of ordine) {
+      if (trova(r) !== r) continue;
+      if (area[r] >= minimo[r] && !(rmax && rmax[r] < req.raggio(minimo[r]))) continue;
+      const l = sL[r] / area[r], a = sA[r] / area[r], b = sB[r] / area[r], v = vic[r];
+      let best = -1, bs = -1;
+      for (let k = 0; k < v.length; k += 3) {
+        const t = trova(v[k]); if (t === r) continue;
+        const fuori = v[k + 2], sulla = v[k + 1];
+        const dl = sL[t] / area[t] - l, da = sA[t] / area[t] - a, db = sB[t] / area[t] - b;
+        const s = (fuori + sulla * 0.02) / (1 + Math.sqrt(dl * dl + da * da + db * db) / 8);
+        if (s > bs) { bs = s; best = t; }
+      }
+      if (best < 0) continue;
+      padre[r] = best; uniti++;
+      area[best] += area[r]; sL[best] += sL[r]; sA[best] += sA[r]; sB[best] += sB[r]; sX[best] += sX[r]; sY[best] += sY[r];
+    }
+    if (!uniti) break;
+    for (let i = 0; i < N; i++) reg[i] = trova(reg[i]);
+    n = compatta(reg, N);
   }
-  comp = componenti(lab, w, h, reg, stack);
-  return { reg, comp };
+  return n;
+}
+
+// bordi più morbidi (forme a puzzle, non seghettate): ogni pixel prende il pezzo più frequente attorno a sé.
+// I pixel delle linee non cambiano e non votano, così i confini restano sulle linee dello sketch.
+function lisciaBordi(reg, w, h, linea, passi, R) {
+  const N = w * h, ids = new Int32Array((2 * R + 1) ** 2), cnt = new Int32Array((2 * R + 1) ** 2);
+  for (let pass = 0; pass < passi; pass++) {
+    const out = reg.slice();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x; if (linea[i]) continue;
+      const cur = reg[i];
+      // solo i pixel vicini a un confine possono cambiare
+      if ((x === 0 || reg[i - 1] === cur) && (x === w - 1 || reg[i + 1] === cur) && (y === 0 || reg[i - w] === cur) && (y === h - 1 || reg[i + w] === cur)) continue;
+      let k = 0;
+      for (let dy = -R; dy <= R; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
+        for (let dx = -R; dx <= R; dx++) { const xx = x + dx; if (xx < 0 || xx >= w) continue; const j = yy * w + xx; if (linea[j]) continue;
+          const v = reg[j]; let t = 0; while (t < k && ids[t] !== v) t++; if (t === k) { ids[k] = v; cnt[k] = 0; k++; } cnt[t]++; } }
+      let best = cur, bc = -1; for (let t = 0; t < k; t++) if (cnt[t] > bc || (cnt[t] === bc && ids[t] === cur)) { bc = cnt[t]; best = ids[t]; }
+      out[i] = best;
+    }
+    reg.set(out);
+  }
+  // ricostruisce pezzi connessi (la lisciatura può staccare piccoli frammenti)
+  const lab = reg.slice(); componenti(lab, w, h, reg, new Int32Array(N));
+}
+
+// colore fine prevalente di ogni pezzo
+function colorePrevalente(reg, fineLab, N, n, Kf) {
+  const out = new Int32Array(n);
+  if (n * Kf <= 40e6) {
+    const hist = new Uint32Array(n * Kf);
+    for (let i = 0; i < N; i++) hist[reg[i] * Kf + fineLab[i]]++;
+    for (let r = 0; r < n; r++) { let b = 0, bc = -1; const o = r * Kf; for (let c = 0; c < Kf; c++) if (hist[o + c] > bc) { bc = hist[o + c]; b = c; } out[r] = b; }
+  } else {
+    const m = new Map(); for (let i = 0; i < N; i++) { const k = reg[i] * Kf + fineLab[i]; m.set(k, (m.get(k) || 0) + 1); }
+    const bc = new Float64Array(n).fill(-1);
+    for (const [k, c] of m) { const r = Math.floor(k / Kf); if (c > bc[r]) { bc[r] = c; out[r] = k - r * Kf; } }
+  }
+  return out;
+}
+
+// pezzi vicini con lo stesso colore e un confine che NON è una linea dello sketch -> un pezzo solo
+function unisciStessoColore(reg, w, h, n, linea, col) {
+  const vic = adiacenze(reg, w, h, n, linea), padre = new Int32Array(n);
+  for (let r = 0; r < n; r++) padre[r] = r;
+  const trova = (r) => { while (padre[r] !== r) { padre[r] = padre[padre[r]]; r = padre[r]; } return r; };
+  for (let a = 0; a < n; a++) { const v = vic[a];
+    for (let k = 0; k < v.length; k += 3) { const b = v[k]; if (b <= a || col[a] !== col[b]) continue;
+      if (v[k + 2] > v[k + 1]) { const ra = trova(a), rb = trova(b); if (ra !== rb) padre[ra] = rb; } } }
+  const N = w * h; for (let i = 0; i < N; i++) reg[i] = trova(reg[i]);
+  return compatta(reg, N);
 }
 
 function segmenta(inp, progress) {
   const { rgba, w, h } = inp, N = w * h, P = progress || (() => {});
   const K = Math.max(2, Math.min(500, inp.K | 0));                 // colori fini
   const Kd = Math.max(2, Math.min(120, inp.Kd | 0 || 24));         // dettaglio del disegno
-  const minArea = Math.max(1, inp.minArea | 0);
+  // pezzo minimo in % dell'immagine (0,07% = regola del gioco); nelle zone viso può essere più piccolo
+  const minPct = inp.minPct > 0 ? inp.minPct : 0.07, minPctViso = inp.minPctViso > 0 ? Math.min(inp.minPctViso, minPct) : minPct;
+  const minArea = Math.max(4, Math.round(minPct / 100 * N)), minViso = Math.max(4, Math.round(minPctViso / 100 * N));
+  const visi = (inp.visi || []).map((v) => [v[0] * w, v[1] * h, v[2] * w, v[3] * h]);
+  const req = {
+    spessore: inp.spessore !== false,
+    minimoIn: (x, y) => { for (const v of visi) if (x >= v[0] && x <= v[2] && y >= v[1] && y <= v[3]) return minViso; return minArea; },
+    raggio: (m) => Math.max(1.5, 0.2 * Math.sqrt(m)), // spessore minimo: cerchio di diametro ≈ 40% del lato del pezzo minimo
+  };
   const smooth = Math.max(0, Math.min(6, inp.smooth | 0));
   const rnd = mulberry32(12345);
 
@@ -154,47 +279,31 @@ function segmenta(inp, progress) {
   const gro = kmeans(Ld, Ad, Bd, N, Kd, rnd, P, 50, "Forme");
   P("Pulizia dei bordi…", 65);
   moda(gro.lab, w, h, 3);
-  // linee dello sketch come confini: i pezzi non le attraversano (solo le linee abbastanza lunghe, secondo "seguire")
-  const seguire = Math.max(0, Math.min(100, inp.seguire | 0)); let usaBar = false; const BAR = gro.K;
+  // linee dello sketch = confini: i pezzi non le attraversano (solo le linee abbastanza lunghe, secondo "seguire")
+  const seguire = Math.max(0, Math.min(100, inp.seguire | 0)), linea = new Uint8Array(N);
   if (inp.barriera && seguire > 0) {
     P("Allineo i pezzi alle linee dello sketch…", 68);
     const b = inp.barriera, Lmin = Math.round(8 + Math.pow(1 - seguire / 100, 2) * 900), vis = new Int32Array(N).fill(-1), st2 = new Int32Array(N), pix = [];
     for (let i = 0; i < N; i++) { if (!b[i] || vis[i] !== -1) continue; let sp = 0; st2[sp++] = i; vis[i] = i; pix.length = 0;
       while (sp) { const p = st2[--sp]; pix.push(p); const x = p % w, y = (p / w) | 0;
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const j = yy * w + xx; if (b[j] && vis[j] === -1) { vis[j] = i; st2[sp++] = j; } } }
-      if (pix.length >= Lmin) { for (const p of pix) gro.lab[p] = BAR; usaBar = true; } }
+      if (pix.length >= Lmin) for (const p of pix) linea[p] = 1; }
   }
-  let { reg, comp } = fondiPiccoli(gro.lab, w, h, minArea, P, usaBar ? BAR : -1);
-  if (usaBar) { // i pixel di linea passano al pezzo vicino, i pezzi restano separati dalla linea
-    const full = new Int32Array(N); let q = new Int32Array(N), qn = 0;
-    for (let i = 0; i < N; i++) { if (comp.col[reg[i]] === BAR) full[i] = -1; else { full[i] = reg[i]; q[qn++] = i; } }
-    while (qn) { const nq = new Int32Array(N); let nn = 0;
-      for (let k = 0; k < qn; k++) { const p = q[k], x = p % w, r = full[p];
-        if (x > 0 && full[p - 1] < 0) { full[p - 1] = r; nq[nn++] = p - 1; }
-        if (x < w - 1 && full[p + 1] < 0) { full[p + 1] = r; nq[nn++] = p + 1; }
-        if (p >= w && full[p - w] < 0) { full[p - w] = r; nq[nn++] = p - w; }
-        if (p < N - w && full[p + w] < 0) { full[p + w] = r; nq[nn++] = p + w; } }
-      q = nq; qn = nn; }
-    for (let i = 0; i < N; i++) if (full[i] < 0) full[i] = 0;
-    comp = componenti(full, w, h, reg, new Int32Array(N));
-  }
-
-  // --- colore fine prevalente in ogni pezzo ---
-  P("Colore prevalente di ogni pezzo…", 85);
-  const R = comp.n, Kf = fine.K;
-  const regColF = new Int32Array(R);
-  if (R * Kf <= 40e6) {
-    const hist = new Uint32Array(R * Kf);
-    for (let i = 0; i < N; i++) hist[reg[i] * Kf + fine.lab[i]]++;
-    for (let r = 0; r < R; r++) { let b = 0, bc = -1, o = r * Kf; for (let c = 0; c < Kf; c++) if (hist[o + c] > bc) { bc = hist[o + c]; b = c; } regColF[r] = b; }
-  } else {
-    const m = new Map(); for (let i = 0; i < N; i++) { const k = reg[i] * Kf + fine.lab[i]; m.set(k, (m.get(k) || 0) + 1); }
-    const bc = new Float64Array(R).fill(-1);
-    for (const [k, c] of m) { const r = Math.floor(k / Kf); if (c > bc[r]) { bc[r] = c; regColF[r] = k - r * Kf; } }
-  }
-  // pezzi vicini con lo stesso colore prevalente -> un solo pezzo (meno linee inutili)
-  if (usaBar) { comp.col = Array.from(regColF); }   // con lo sketch non unisco i pezzi separati da una linea
-  else { const lab2 = new Int32Array(N); for (let i = 0; i < N; i++) lab2[i] = regColF[reg[i]]; comp = componenti(lab2, w, h, reg, new Int32Array(N)); }
+  // pezzi iniziali: forme del disegno, mai a cavallo di una linea
+  const lab0 = gro.lab; for (let i = 0; i < N; i++) if (linea[i]) lab0[i] = -1;
+  const reg = new Int32Array(N);
+  componenti(lab0, w, h, reg, new Int32Array(N));
+  riempiVuoti(reg, w, h);
+  // pezzi troppo piccoli o sottili -> uniti; poi pezzi vicini dello stesso colore -> uniti; poi controllo finale
+  let n = unisciPiccoli(reg, w, h, linea, L0, A0, B0, req, P, 72);
+  P("Unisco i pezzi vicini dello stesso colore…", 85);
+  n = unisciStessoColore(reg, w, h, n, linea, colorePrevalente(reg, fine.lab, N, n, fine.K));
+  P("Ammorbidisco i bordi dei pezzi…", 86);
+  lisciaBordi(reg, w, h, linea, 3, 2);
+  n = unisciPiccoli(reg, w, h, linea, L0, A0, B0, req, P, 88);
+  const Kf = fine.K;
+  const comp = { n, col: Array.from(colorePrevalente(reg, fine.lab, N, n, Kf)), area: new Array(n).fill(0) };
+  for (let i = 0; i < N; i++) comp.area[reg[i]]++;
 
   // tavolozze: colore medio reale di ogni colore fine
   const sL = new Float64Array(Kf), sA = new Float64Array(Kf), sB = new Float64Array(Kf), cnt = new Float64Array(Kf);
@@ -220,7 +329,7 @@ function segmenta(inp, progress) {
   for (let i = 0; i < N; i++) { const r = reg[i], d = dist[i] / 3; if (d > pos[r * 3 + 2]) { pos[r * 3] = i % w; pos[r * 3 + 1] = (i / w) | 0; pos[r * 3 + 2] = d; } }
 
   P("Fatto", 100);
-  return { w, h, nReg: comp.n, reg, regColor, palette, counts, pos, fineLab, finePal, nFine: usati.length, kFine: Kf };
+  return { w, h, nReg: comp.n, reg, regColor, palette, counts, pos, fineLab, finePal, nFine: usati.length, kFine: Kf, linea, minArea, minViso };
 }
 
 if (typeof self !== "undefined" && typeof self.postMessage === "function" && typeof window === "undefined") {
@@ -229,7 +338,7 @@ if (typeof self !== "undefined" && typeof self.postMessage === "function" && typ
       const t0 = Date.now();
       const res = segmenta(e.data, (msg, pct) => self.postMessage({ tipo: "progresso", msg, pct }));
       res.ms = Date.now() - t0;
-      self.postMessage({ tipo: "fatto", res }, [res.reg.buffer, res.regColor.buffer, res.pos.buffer, res.fineLab.buffer]);
+      self.postMessage({ tipo: "fatto", res }, [res.reg.buffer, res.regColor.buffer, res.pos.buffer, res.fineLab.buffer, res.linea.buffer]);
     } catch (err) { self.postMessage({ tipo: "errore", msg: String((err && err.message) || err) }); }
   };
 }

@@ -133,7 +133,8 @@
       <div class="regola">
         <label class="campo">Colori<span class="riga"><input type="range" id="segK" min="2" max="500" value="120"><output id="segKOut"></output></span></label>
         <label class="campo">Dettaglio dei pezzi<span class="riga"><input type="range" id="segKd" min="2" max="120" value="60"><output id="segKdOut"></output></span></label>
-        <label class="campo">Pezzo minimo (px)<span class="riga"><input type="range" id="segMin" min="2" max="400" value="20"><output id="segMinOut"></output></span></label>
+        <label class="campo">Pezzo minimo (% dell'immagine)<span class="riga"><input type="range" id="segMinPct" min="0.02" max="0.5" step="0.01" value="0.07"><output id="segMinPctOut"></output></span></label>
+        <label class="campo">Pezzo minimo nel viso (%)<span class="riga"><input type="range" id="segMinViso" min="0.005" max="0.07" step="0.005" value="0.02"><output id="segMinVisoOut"></output></span></label>
         <label class="campo">Morbidezza<span class="riga"><input type="range" id="segSmooth" min="0" max="4" value="1"><output id="segSmoothOut"></output></span></label>
         <label class="campo">Segui lo sketch<span class="riga"><input type="range" id="segSegui" min="0" max="100" value="60"><output id="segSeguiOut"></output></span></label>
         <label class="campo">Vista
@@ -141,9 +142,13 @@
         <label class="campo">Realismo (luci e ombre dentro i pezzi)<span class="riga"><input type="range" id="segReal" min="0" max="100" value="65"><output id="segRealOut"></output></span></label>
         <label class="check"><input type="checkbox" id="segSketchSopra" checked> Sketch sovrapposto</label>
         <label class="check"><input type="checkbox" id="segBordi"> Contorni dei pezzi</label>
+        <label class="check"><input type="checkbox" id="segSpessore" checked> Niente strisce sottili (spessore minimo)</label>
       </div>
       <div class="azioni">
         <button class="principale" id="btnSegLoc" disabled>Segmenta l'originale</button>
+        <button class="sec" id="btnSegnaViso" title="Trascina un rettangolo sul viso: lì i pezzi possono essere più piccoli">Segna il viso</button>
+        <button class="sec" id="btnTrovaViso" title="Gemini trova i visi nell'opera">Trova il viso (Gemini)</button>
+        <button class="sec" id="btnTogliViso">Togli zone viso</button>
         <button class="sec" id="btnConsigliati" title="Riporta i cursori a valori equilibrati e fedeli">Valori consigliati</button>
         <button class="principale" id="btnPerfeziona" style="background:var(--accento2);border-color:var(--accento2)" title="Gemini sceglie le impostazioni migliori (i colori restano quelli reali)">✨ Perfeziona con Gemini</button>
         <input type="file" id="fileSeg" accept="image/*" hidden>
@@ -294,7 +299,7 @@ const PRESET_BASE = {
 const P2_GUIDA = ` Image 2 is a line drawing of the same painting: use its closed areas as the segments, keeping its lines in the same positions.`;
 const RAPPORTI = ["1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9"];
 
-const st = { img: null, crop: null, sel: null, base: null, ratio: "3:4", sketch: null, seg: null, res: null, nome: "opera", worker: null };
+const st = { visi: [], img: null, crop: null, sel: null, base: null, ratio: "3:4", sketch: null, seg: null, res: null, nome: "opera", worker: null };
 
 // ---------- utilità ----------
 function log(msg, cls) { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = new Date().toLocaleTimeString() + "  " + msg; $("log").prepend(d); }
@@ -452,13 +457,39 @@ function segmentaLocale() { return new Promise((fine) => {
   wk.onmessage = (e) => { const m = e.data; if (m.tipo === "progresso") { $("caricaSeg").textContent = m.msg; return; }
     wk.terminate(); st.wkSeg = null; lavoro("telaSeg", false);
     if (m.tipo === "errore") { log("Segmentazione — errore: " + m.msg, "err"); return fine(false); }
-    st.segRes = m.res; disegnaSeg(); if ($("zone4").value === "seg") aggiornaColora(); log(`Segmentata: ${m.res.nReg.toLocaleString("it")} pezzi, ${m.res.kFine} colori reali (${(m.res.ms / 1000).toFixed(1)} s).`, "ok");
+    st.segRes = m.res; disegnaSeg(); if ($("zone4").value === "seg") aggiornaColora(); log(`Segmentata: ${m.res.nReg.toLocaleString("it")} pezzi, ${m.res.kFine} colori reali, pezzo minimo ${m.res.minArea} px (${$("segMinPct").value}%)${st.visi.length ? `, nel viso ${m.res.minViso} px` : ""} (${(m.res.ms / 1000).toFixed(1)} s).`, "ok");
     if (st.sketch) rilevaColori(); fine(true); };
-  wk.postMessage({ rgba, w, h, K: Number($("segK").value), Kd: Number($("segKd").value), minArea: Number($("segMin").value), smooth: Number($("segSmooth").value), barriera, seguire: barriera ? Math.max(seguire, st.mappaGemini ? 70 : 0) : 0 }, barriera ? [rgba.buffer, barriera.buffer] : [rgba.buffer]);
+  wk.postMessage({ rgba, w, h, K: Number($("segK").value), Kd: Number($("segKd").value), minPct: Number($("segMinPct").value), minPctViso: Number($("segMinViso").value), visi: st.visi, spessore: $("segSpessore").checked, smooth: Number($("segSmooth").value), barriera, seguire: barriera ? Math.max(seguire, st.mappaGemini ? 70 : 0) : 0 }, barriera ? [rgba.buffer, barriera.buffer] : [rgba.buffer]);
 }); }
 function sketchNelFormato(w, h) { // sketch allineato, riportato nel formato dell'originale
   const SW = st.sketch.width, SH = st.sketch.height, sc = Number($("sc").value) / 100, ox = (SW - SW * sc) / 2 + Number($("dx").value) / 1000 * SW, oy = (SH - SH * sc) / 2 + Number($("dy").value) / 1000 * SH;
   const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(st.sketch, -ox * w / (SW * sc), -oy * h / (SH * sc), w / sc, h / sc); return c;
+}
+// confini dei pezzi (1 = pixel di bordo) e versione allargata; linee dello sketch allargate
+function dilata(m, w, h, rad) { let a = m; for (let k = 0; k < rad; k++) { const b = a.slice(); for (let i = 0; i < w * h; i++) if (a[i]) { const x = i % w; if (x > 0) b[i - 1] = 1; if (x < w - 1) b[i + 1] = 1; if (i >= w) b[i - w] = 1; if (i < w * h - w) b[i + w] = 1; } a = b; } return a; }
+function mappeConfini(r) {
+  if (r._confini) return r._confini; const W = r.w, N = r.w * r.h, b = new Uint8Array(N);
+  for (let i = 0; i < N; i++) { const x = i % W; if ((x < W - 1 && r.reg[i + 1] !== r.reg[i]) || (i + W < N && r.reg[i + W] !== r.reg[i])) b[i] = 1; }
+  // bordo grigio solo dove non c'è una linea dello sketch: un solo strato di linee, niente doppioni
+  const lin = r.linea ? dilata(r.linea, r.w, r.h, 1) : new Uint8Array(N), grigio = new Uint8Array(N);
+  for (let i = 0; i < N; i++) grigio[i] = b[i] && !lin[i] ? 1 : 0;
+  // dove tenere lo sketch: vicino a un confine E su una linea usata come confine (spariscono puntini e tratti corti)
+  const vb = dilata(b, r.w, r.h, 2), usa = r.linea && r.linea.some((v) => v) ? dilata(r.linea, r.w, r.h, 2) : null, vicino = new Uint8Array(N);
+  for (let i = 0; i < N; i++) vicino[i] = vb[i] && (!usa || usa[i]) ? 1 : 0;
+  return (r._confini = { bordo: b, grigio, vicino });
+}
+// sketch allineato (alta risoluzione), tenuto SOLO dove separa due pezzi: le linee interne a un pezzo spariscono
+function sketchSuiConfini(r, w2, h2) {
+  const SW = st.sketch.width, SH = st.sketch.height, sc = Number($("sc").value) / 100, ox = (SW - SW * sc) / 2 + Number($("dx").value) / 1000 * SW, oy = (SH - SH * sc) / 2 + Number($("dy").value) / 1000 * SH;
+  const sk = document.createElement("canvas"); sk.width = w2; sk.height = h2; const sg = sk.getContext("2d"); sg.imageSmoothingQuality = "high";
+  sg.fillStyle = "#fff"; sg.fillRect(0, 0, w2, h2); sg.drawImage(st.sketch, -ox * w2 / (SW * sc), -oy * h2 / (SH * sc), w2 / sc, h2 / sc);
+  const sd = sg.getImageData(0, 0, w2, h2), dd = sd.data;
+  for (let i = 0; i < w2 * h2; i++) { const o = i * 4, lum = 0.299 * dd[o] + 0.587 * dd[o + 1] + 0.114 * dd[o + 2]; dd[o + 3] = Math.min(255, Math.max(0, (255 - lum) * 1.35 - 8)); dd[o] = dd[o + 1] = dd[o + 2] = 0; }
+  sg.putImageData(sd, 0, 0);
+  const { vicino } = mappeConfini(r), mc = document.createElement("canvas"); mc.width = r.w; mc.height = r.h; const mg = mc.getContext("2d"), md = mg.createImageData(r.w, r.h);
+  for (let i = 0; i < r.w * r.h; i++) md.data[i * 4 + 3] = vicino[i] ? 255 : 0; mg.putImageData(md, 0, 0);
+  sg.globalCompositeOperation = "destination-in"; sg.imageSmoothingEnabled = true; sg.drawImage(mc, 0, 0, w2, h2); sg.globalCompositeOperation = "source-over";
+  return sk;
 }
 function disegnaSeg() {
   const r = st.segRes; if (!r) return; const N = r.w * r.h, W = r.w;
@@ -472,22 +503,63 @@ function disegnaSeg() {
   const v = document.createElement("canvas"); v.width = r.w; v.height = r.h; const vg = v.getContext("2d"), vd = vg.createImageData(r.w, r.h), q = vd.data;
   let media = null; if (px && real > 0) { const s3 = new Float64Array(r.nReg * 3), n = new Float64Array(r.nReg); for (let i = 0; i < N; i++) { const k = r.reg[i]; s3[k * 3] += px[i * 4]; s3[k * 3 + 1] += px[i * 4 + 1]; s3[k * 3 + 2] += px[i * 4 + 2]; n[k]++; } media = s3.map((x, j) => x / Math.max(1, n[(j / 3) | 0])); }
   for (let i = 0; i < N; i++) { const o = i * 4, x = i % W;
-    if (bordi && ((x < W - 1 && r.reg[i + 1] !== r.reg[i]) || (i + W < N && r.reg[i + W] !== r.reg[i]))) { q[o] = q[o + 1] = q[o + 2] = 40; q[o + 3] = 255; continue; }
+    if (bordi && mappeConfini(r).bordo[i]) { q[o] = q[o + 1] = q[o + 2] = 40; q[o + 3] = 255; continue; }
     for (let ch = 0; ch < 3; ch++) { let val = d[o + ch]; if (media) val += real * (px[o + ch] - media[r.reg[i] * 3 + ch]); q[o + ch] = val; } q[o + 3] = 255; }
   vg.putImageData(vd, 0, 0);
-  if ($("segSketchSopra").checked && st.sketch) { vg.globalCompositeOperation = "multiply"; vg.drawImage(sketchNelFormato(r.w, r.h), 0, 0); vg.globalCompositeOperation = "source-over"; }
+  if ($("segSketchSopra").checked && st.sketch) vg.drawImage(sketchSuiConfini(r, r.w, r.h), 0, 0);
+  // zone viso (pezzi più piccoli ammessi)
+  vg.save(); vg.strokeStyle = "#ff7a00"; vg.lineWidth = Math.max(2, r.w / 300); vg.setLineDash([8, 6]);
+  for (const f of st.visi) vg.strokeRect(f[0] * r.w, f[1] * r.h, (f[2] - f[0]) * r.w, (f[3] - f[1]) * r.h); vg.restore();
   mostra("telaSeg", v); disegnaOverlay(); aggiorna();
 }
 $("btnSegLoc").onclick = segmentaLocale;
 let tSeg = null;
-["segK", "segKd", "segMin", "segSmooth", "segSegui"].forEach((id) => $(id).addEventListener("input", () => { $(id + "Out").textContent = $(id).value; salva(id, $(id).value); clearTimeout(tSeg); tSeg = setTimeout(segmentaLocale, 500); }));
+["segK", "segKd", "segMinPct", "segMinViso", "segSmooth", "segSegui"].forEach((id) => $(id).addEventListener("input", () => { $(id + "Out").textContent = $(id).value; salva(id, $(id).value); clearTimeout(tSeg); tSeg = setTimeout(segmentaLocale, 500); }));
 ["segReal", "segSketchSopra"].forEach((id) => $(id).addEventListener("input", () => { if (id === "segReal") { $("segRealOut").textContent = $("segReal").value; salva("segReal", $("segReal").value); } disegnaSeg(); }));
 { const v = leggi("segReal"); if (v) $("segReal").value = v; $("segRealOut").textContent = $("segReal").value; const a = leggi("autoSketch"); if (a !== null) $("autoSketch").checked = a === "true"; }
 $("autoSketch").addEventListener("change", () => salva("autoSketch", $("autoSketch").checked));
-const CONSIGLIATI = { segK: 120, segKd: 60, segMin: 20, segSmooth: 1, segSegui: 60 };
+// ---------- zone viso: lì i pezzi possono essere più piccoli (minimo "nel viso") ----------
+$("segSpessore").addEventListener("change", () => { salva("segSpessore", $("segSpessore").checked); segmentaLocale(); });
+{ const v = leggi("segSpessore"); if (v !== null) $("segSpessore").checked = v === "true"; }
+$("btnTogliViso").onclick = () => { st.visi = []; log("Zone viso tolte.", "ok"); segmentaLocale(); };
+$("btnSegnaViso").onclick = () => {
+  const cv = $("telaSeg").querySelector("canvas"); if (!cv || !st.segRes) return log("Prima attendi la segmentazione.", "err");
+  log("Trascina un rettangolo sul viso nel riquadro del passo 3.");
+  const tela = $("telaSeg"), box = document.createElement("div");
+  box.style.cssText = "position:absolute;border:2px dashed #ff7a00;background:rgba(255,122,0,.12);pointer-events:none;display:none";
+  tela.appendChild(box); cv.style.cursor = "crosshair";
+  let a = null;
+  const pos = (e) => { const b = cv.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), Math.min(1, Math.max(0, (e.clientY - b.top) / b.height))]; };
+  const disegna = (p) => { const b = cv.getBoundingClientRect(), t = tela.getBoundingClientRect();
+    const x0 = Math.min(a[0], p[0]), y0 = Math.min(a[1], p[1]), x1 = Math.max(a[0], p[0]), y1 = Math.max(a[1], p[1]);
+    Object.assign(box.style, { display: "block", left: b.left - t.left + x0 * b.width + "px", top: b.top - t.top + y0 * b.height + "px", width: (x1 - x0) * b.width + "px", height: (y1 - y0) * b.height + "px" }); };
+  const giu = (e) => { a = pos(e); cv.setPointerCapture(e.pointerId); };
+  const muovi = (e) => { if (a) disegna(pos(e)); };
+  const su = (e) => { if (!a) return; const p = pos(e), f = [Math.min(a[0], p[0]), Math.min(a[1], p[1]), Math.max(a[0], p[0]), Math.max(a[1], p[1])];
+    cv.removeEventListener("pointerdown", giu); cv.removeEventListener("pointermove", muovi); cv.removeEventListener("pointerup", su); box.remove(); cv.style.cursor = "";
+    if ((f[2] - f[0]) * (f[3] - f[1]) < 0.0004) return log("Rettangolo troppo piccolo, riprova.", "err");
+    st.visi.push(f); log(`Zona viso aggiunta: lì il pezzo minimo è ${$("segMinViso").value}%.`, "ok"); segmentaLocale(); };
+  cv.addEventListener("pointerdown", giu); cv.addEventListener("pointermove", muovi); cv.addEventListener("pointerup", su);
+};
+const PROMPT_VISI = `Find every human face in this image (frontal, profile or partial). Answer ONLY with JSON: {"faces":[[ymin,xmin,ymax,xmax], ...]} with coordinates normalized 0-1000. Each box must include eyes, eyebrows, nose, mouth and chin. If there are no faces answer {"faces":[]}.`;
+$("btnTrovaViso").onclick = async () => {
+  if (!st.base) return log("Prima carica l'opera.", "err");
+  const btn = $("btnTrovaViso"); btn.disabled = true; $("statoPerf").textContent = "Gemini cerca i visi…";
+  try {
+    const j = await chiamaGeminiTesto(PROMPT_VISI, [aJpegB64(st.base, 1024)]);
+    const f = (j.faces || []).filter((b) => Array.isArray(b) && b.length === 4).map(([y0, x0, y1, x1]) => {
+      const mx = (x1 - x0) * 0.08, my = (y1 - y0) * 0.08; // un po' di margine
+      return [Math.max(0, (x0 - mx) / 1000), Math.max(0, (y0 - my) / 1000), Math.min(1, (x1 + mx) / 1000), Math.min(1, (y1 + my) / 1000)]; });
+    if (!f.length) { $("statoPerf").textContent = "Gemini non ha trovato visi: puoi segnarlo a mano."; return; }
+    st.visi = f; $("statoPerf").textContent = `✓ ${f.length === 1 ? "1 viso trovato" : f.length + " visi trovati"}.`; log(`Gemini ha trovato ${f.length} ${f.length === 1 ? "viso" : "visi"}: lì il pezzo minimo è ${$("segMinViso").value}%.`, "ok");
+    await segmentaLocale();
+  } catch (e) { $("statoPerf").innerHTML = '<span class="err">✕ ' + e.message.replace(/</g, "&lt;").slice(0, 200) + "</span>"; }
+  finally { btn.disabled = false; }
+};
+const CONSIGLIATI = { segK: 120, segKd: 60, segMinPct: 0.07, segMinViso: 0.02, segSmooth: 1, segSegui: 60 };
 $("btnConsigliati").onclick = () => { for (const [k, v] of Object.entries(CONSIGLIATI)) { $(k).value = v; $(k + "Out").textContent = v; salva(k, v); } $("statoPerf").textContent = "Valori consigliati ripristinati."; segmentaLocale(); };
 ["segVista", "segBordi"].forEach((id) => $(id).addEventListener("input", () => { if (st.segRes) { disegnaSeg(); if (st.res && $("fonte").value === "seg") rilevaColori(); } }));
-["segK", "segKd", "segMin", "segSmooth", "segSegui"].forEach((id) => { const v = leggi(id); if (v) $(id).value = v; $(id + "Out").textContent = $(id).value; });
+["segK", "segKd", "segMinPct", "segMinViso", "segSmooth", "segSegui"].forEach((id) => { const v = leggi(id); if (v) $(id).value = v; $(id + "Out").textContent = $(id).value; });
 
 // ---------- ✨ Perfeziona con Gemini (passo 3) ----------
 const MODELLI_TESTO = ["gemini-4-hydrogen", "gemini-3-flash", "gemini-2.5-flash"];
@@ -507,20 +579,20 @@ async function chiamaGeminiTesto(prompt, immagini) {
 }
 const PROMPT_CONSULENTE = (stato) => `You are an expert in paint-by-numbers and coloring-book design. Image 1 is the original artwork. Image 2 is the current automatic segmentation (each piece filled with the dominant real color of the original; the colors are never changed). ${stato.sketch ? "Image 3 is the line drawing (sketch) that the pieces can follow." : ""}
 Top priority: the result must look as close as possible to the original (realistic), never blotchy or posterized. Goal: pieces that follow the natural shapes of the artwork, faithful to the original; more and smaller pieces on faces, eyes, lips and hands; fewer and larger pieces in uniform areas like sky and background; no messy tiny fragments; a palette that is comfortable to color.
-Current settings: colors=${stato.K} (2-500, number of real colors), detail=${stato.Kd} (2-120, number of base shapes), min_piece=${stato.min} (2-400 pixels, at ${stato.w}x${stato.h}), smoothing=${stato.smooth} (0-4), follow_sketch=${stato.segui} (0-100). Result: ${stato.pezzi} pieces, ${stato.colori} colors.
-Look at image 2 critically compared with image 1 and suggest improved settings. Answer ONLY with JSON: {"colors":int,"detail":int,"min_piece":int,"smoothing":int,"follow_sketch":int,"reason":"one short sentence in Italian"}`;
+Current settings: colors=${stato.K} (2-500, number of real colors), detail=${stato.Kd} (2-120, number of base shapes), smoothing=${stato.smooth} (0-4), follow_sketch=${stato.segui} (0-100). Result: ${stato.pezzi} pieces, ${stato.colori} colors.
+Look at image 2 critically compared with image 1 and suggest improved settings. Answer ONLY with JSON: {"colors":int,"detail":int,"smoothing":int,"follow_sketch":int,"reason":"one short sentence in Italian"}`;
 async function perfezionaConGemini() {
   if (!st.base || !st.segRes) return log("Prima carica l'opera e attendi la segmentazione.", "err");
   const btn = $("btnPerfeziona"); btn.disabled = true; $("statoPerf").textContent = "Gemini sta analizzando…";
   try {
     if ($("perfContorni").checked) { await mappaContorniGemini(); }
-    const r = st.segRes, stato = { sketch: !!st.sketch, K: $("segK").value, Kd: $("segKd").value, min: $("segMin").value, smooth: $("segSmooth").value, segui: $("segSegui").value, w: r.w, h: r.h, pezzi: r.nReg, colori: r.kFine };
+    const r = st.segRes, stato = { sketch: !!st.sketch, K: $("segK").value, Kd: $("segKd").value, min: $("segMinPct").value, smooth: $("segSmooth").value, segui: $("segSegui").value, w: r.w, h: r.h, pezzi: r.nReg, colori: r.kFine };
     const imgs = [aJpegB64(st.base, 1024), aJpegB64(st.seg, 1024)]; if (st.sketch) imgs.push(aJpegB64(canvasDa(st.sketch), 1024));
     const j = await chiamaGeminiTesto(PROMPT_CONSULENTE(stato), imgs);
     const metti = (id, v, a, b) => { if (v == null || isNaN(v)) return; v = Math.round(Math.max(a, Math.min(b, Number(v)))); $(id).value = v; $(id + "Out").textContent = v; salva(id, v); };
     // limiti che mantengono il risultato fedele all'originale
-    metti("segK", j.colors, 24, 300); metti("segKd", j.detail, 20, 110); metti("segMin", j.min_piece, 4, 120); metti("segSmooth", j.smoothing, 0, 2); metti("segSegui", j.follow_sketch, 20, 95);
-    $("statoPerf").textContent = "✓ " + (j.reason || "impostazioni aggiornate"); log(`Gemini consiglia: colori ${$("segK").value}, dettaglio ${$("segKd").value}, pezzo minimo ${$("segMin").value}, morbidezza ${$("segSmooth").value}, segui sketch ${$("segSegui").value}. ${j.reason || ""}`, "ok");
+    metti("segK", j.colors, 24, 300); metti("segKd", j.detail, 20, 110); metti("segSmooth", j.smoothing, 0, 2); metti("segSegui", j.follow_sketch, 20, 95);
+    $("statoPerf").textContent = "✓ " + (j.reason || "impostazioni aggiornate"); log(`Gemini consiglia: colori ${$("segK").value}, dettaglio ${$("segKd").value}, morbidezza ${$("segSmooth").value}, segui sketch ${$("segSegui").value}. ${j.reason || ""}`, "ok");
     await segmentaLocale();
   } catch (e) { $("statoPerf").innerHTML = '<span class="err">✕ Gemini non ha risposto: ' + e.message.replace(/</g, "&lt;").slice(0, 220) + "</span>"; log("Perfeziona con Gemini — errore: " + e.message, "err"); }
   finally { btn.disabled = false; }
@@ -799,7 +871,7 @@ async function disegnaGalleria() {
 const imgDaBlob = (b) => (b ? caricaImg(URL.createObjectURL(b)) : null);
 async function apriDaGalleria(id) {
   const o = await dbOp("readonly", (s) => s.get(id)); if (!o) return;
-  st.idOpera = o.id; st.nome = o.nome; st.crop = null; st.res = null; st.colGemini = null; st.variantiSketch = null; mostraVarianti();
+  st.idOpera = o.id; st.visi = []; st.nome = o.nome; st.crop = null; st.res = null; st.colGemini = null; st.variantiSketch = null; mostraVarianti();
   st.img = await imgDaBlob(o.base); preparaBase();
   st.sketch = await imgDaBlob(o.sketch); st.seg = await imgDaBlob(o.seg);
   if (st.sketch) mostra("telaSketch", canvasDa(st.sketch)); if (st.seg) mostra("telaSeg", canvasDa(st.seg));
@@ -810,7 +882,7 @@ $("btnSalvaGal").onclick = () => salvaGalleria(false);
 
 // ---------- elaborazione in serie ----------
 function caricaFileOriginale(f) { return new Promise((ok) => { const fr = new FileReader(); fr.onload = async () => { try { st.img = await caricaImg(fr.result); } catch (e) { return ok(false); }
-  st.nome = f.name.replace(/\.[^.]+$/, ""); st.idOpera = null; st.crop = null; st.sketch = st.seg = st.res = st.colGemini = null; st.variantiSketch = null; mostraVarianti(); preparaBase(); ok(true); }; fr.readAsDataURL(f); }); }
+  st.nome = f.name.replace(/\.[^.]+$/, ""); st.idOpera = null; st.visi = []; st.crop = null; st.sketch = st.seg = st.res = st.colGemini = null; st.variantiSketch = null; mostraVarianti(); preparaBase(); ok(true); }; fr.readAsDataURL(f); }); }
 $("btnSerie").onclick = () => $("fileSerie").click();
 $("fileSerie").onchange = async (e) => {
   const files = [...e.target.files]; e.target.value = ""; if (!files.length) return;
@@ -949,21 +1021,16 @@ async function recordDaSegmentazione(id) {
   // linee: contorni dei pezzi (grigio) + eventualmente lo sketch (nero) riportato nel formato dell'originale
   const lin = document.createElement("canvas"); lin.width = w; lin.height = h; const lg = lin.getContext("2d"); lg.fillStyle = "#fff"; lg.fillRect(0, 0, w, h);
   const li = lg.getImageData(0, 0, w, h);
-  for (let i = 0; i < N; i++) { const o = i * 4, x = i % w;
-    const bordo = (x < w - 1 && r.reg[i + 1] !== r.reg[i]) || (i + w < N && r.reg[i + w] !== r.reg[i]);
-    const v = bordo ? 175 : 255; li.data[o] = li.data[o + 1] = li.data[o + 2] = v; }
+  const conf = mappeConfini(r), conSchizzo = $("linee4").checked && st.sketch;
+  for (let i = 0; i < N; i++) { const o = i * 4;
+    const v = (conSchizzo ? conf.grigio[i] : conf.bordo[i]) ? 175 : 255; li.data[o] = li.data[o + 1] = li.data[o + 2] = v; }
   lg.putImageData(li, 0, 0);
   // sketch: alta risoluzione, allineato all'originale, bianco -> trasparente, sfumature delle linee conservate
   let schizzo = null;
   if ($("linee4").checked && st.sketch) {
     const SW = st.sketch.width, SH = st.sketch.height, sc = Number($("sc").value) / 100, ox = (SW - SW * sc) / 2 + Number($("dx").value) / 1000 * SW, oy = (SH - SH * sc) / 2 + Number($("dy").value) / 1000 * SH;
     const K2 = Math.min(3, Math.max(1, (SW * sc) / w), 2600 / Math.max(w, h)), w2 = Math.round(w * K2), h2 = Math.round(h * K2);
-    const sk = document.createElement("canvas"); sk.width = w2; sk.height = h2; const sg = sk.getContext("2d"); sg.imageSmoothingQuality = "high";
-    sg.fillStyle = "#fff"; sg.fillRect(0, 0, w2, h2); sg.drawImage(st.sketch, -ox * w2 / (SW * sc), -oy * h2 / (SH * sc), w2 / sc, h2 / sc);
-    const sd = sg.getImageData(0, 0, w2, h2), dd = sd.data;
-    for (let i = 0; i < w2 * h2; i++) { const o = i * 4, lum = 0.299 * dd[o] + 0.587 * dd[o + 1] + 0.114 * dd[o + 2]; const a = Math.min(255, Math.max(0, (255 - lum) * 1.35 - 8));
-      dd[o] = dd[o + 1] = dd[o + 2] = 0; dd[o + 3] = a; }
-    sg.putImageData(sd, 0, 0); schizzo = await blobDi(sk);
+    schizzo = await blobDi(sketchSuiConfini(r, w2, h2));
   }
   const col = document.createElement("canvas"); col.width = w; col.height = h; const cg = col.getContext("2d"), cd = cg.createImageData(w, h);
   for (let i = 0; i < N; i++) { const c = r.palette[r.regColor[r.reg[i]]], o = i * 4; cd.data[o] = c[0]; cd.data[o + 1] = c[1]; cd.data[o + 2] = c[2]; cd.data[o + 3] = 255; } cg.putImageData(cd, 0, 0);
