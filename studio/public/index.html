@@ -213,7 +213,8 @@
         <select id="zone4" title="Quali zone si colorano"><option value="seg">Zone = pezzi della segmentazione (passo 3)</option><option value="sketch">Zone = aree dello sketch (passo 2)</option></select>
         <label class="check"><input type="checkbox" id="linee4" checked> Sovrapponi le linee dello sketch</label>
         <button class="principale" id="btnSchermo" disabled>Apri a schermo intero</button>
-        <button class="principale" id="btnTelefono" disabled style="background:var(--accento2);border-color:var(--accento2)">📱 Invia al telefono</button>
+        <button class="principale" id="btnAdmin" disabled style="background:var(--ok);border-color:var(--ok)">📤 Invia all'admin</button>
+        <a id="vaiAdmin" href="/admin/#/opere" style="display:none;font-family:system-ui;font-size:13px;align-self:center">Apri l'admin →</a>
         <button class="sec" id="btnRigenera4" disabled>Ricrea dal passo 3</button>
         <span class="nota">Nel menu ⋯ dell'app: "Rivela l'originale" oppure colore piatto, "solo il colore giusto", numeri.</span>
       </div>
@@ -288,8 +289,6 @@
         <button class="sec" id="prLeg" disabled>Stampa legenda</button>
       </div>
       <div class="azioni"><button class="sec" id="dlSvg" disabled>Scarica SVG (vettoriale)</button><button class="sec" id="dlPdf" disabled>Scarica PDF A4</button></div>
-      <button class="principale" id="btnAdmin" disabled style="background:var(--ok);border-color:var(--ok)">📤 Invia all'admin</button>
-      <a id="vaiAdmin" href="/admin/#/opere" style="display:none;font-family:system-ui;font-size:13px">Apri l'admin →</a>
       <button class="principale" id="btnPacchetto" disabled>⬇ Scarica pacchetto per app (.zip)</button>
       <button class="principale" id="btnApp" disabled style="background:var(--accento2);border-color:var(--accento2)">🎨 Colora nell'app</button>
       <div class="nota">Il pacchetto contiene tutte le immagini, la mappa delle zone, la tavolozza e un file dati (JSON) pronto per un'app di colorazione.</div>
@@ -364,7 +363,7 @@ function aggiorna() {
   $("btnColGemini").disabled = !st.base || !st.sketch || occ;
   $("dlSketch").disabled = !st.sketch; $("dlSeg").disabled = !st.seg;
   ["dlCol", "prCol", "dlNum", "prNum", "prLeg"].forEach((id) => ($(id).disabled = !st.res && !(id === "dlCol" && st.colGemini)));
-  $("btnPacchetto").disabled = $("btnAdmin").disabled = $("btnApp").disabled = $("dlSvg").disabled = $("dlPdf").disabled = !st.res;
+  $("btnPacchetto").disabled = $("btnApp").disabled = $("dlSvg").disabled = $("dlPdf").disabled = !st.res;
   $("btnAllinea").disabled = !st.base || !st.sketch; $("btnAutoSketch").disabled = !st.base || occ; $("btnAutoCornice").disabled = !st.img || occ; $("btnSalvaGal").disabled = !st.base;
 }
 
@@ -1205,25 +1204,7 @@ async function scaricaPacchetto() {
   log(`Pacchetto creato: ${files.length} file, ${(blob.size / 1048576).toFixed(1)} MB.`, "ok");
 }
 $("btnPacchetto").onclick = scaricaPacchetto;
-// ---------- invio diretto all'admin (Supabase: bucket privato "coloring", cartella inbox/) ----------
-async function inviaAdmin() {
-  if (!st.res) return;
-  if (!window.team || !window.team.utente) return log("Per inviare all'admin entra prima con l'account del team (in alto).", "err");
-  const btn = $("btnAdmin"); btn.disabled = true;
-  try {
-    log("Preparo il pacchetto per l'admin…");
-    const files = await filePacchetto(false), blob = creaZip(files);
-    const nome = (st.nome || "opera").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "opera";
-    const percorso = `inbox/${new Date().toISOString().replace(/[:.]/g, "-")}_${nome}.zip`;
-    log(`Invio all'admin (${(blob.size / 1048576).toFixed(1)} MB)…`);
-    const { error } = await window.team.client.storage.from("coloring").upload(percorso, blob, { contentType: "application/zip" });
-    if (error) throw new Error(error.message);
-    log(window.team.sito ? `"${st.nome}" inviato: lo trovi nell'Admin, in "Arrivati dallo Studio".` : `"${st.nome}" inviato all'admin (Arrivati dallo Studio).`, "ok");
-    if (window.team.sito) $("vaiAdmin").style.display = "";
-  } catch (e) { log("Invio all'admin non riuscito: " + e.message, "err"); }
-  btn.disabled = !st.res;
-}
-$("btnAdmin").onclick = inviaAdmin;
+
 // invia l'opera all'app di colorazione (stesso browser). opz.id fisso = sostituisce la versione precedente
 function origAllineata(W, H) { const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
   const sc = Number($("sc").value) / 100, dx = Number($("dx").value) / 1000 * W, dy = Number($("dy").value) / 1000 * H, w = W * sc, h = H * sc; g.drawImage(st.base, (W - w) / 2 + dx, (H - h) / 2 + dy, w, h); return c; }
@@ -1282,23 +1263,45 @@ async function aggiornaColora() {
   else { if (!st.res) return; await apriInApp({ id, incorporato: true }); }
   st.idApp = id;
   $("frameApp").src = "app.html?id=" + id + "&incorporato=1&t=" + Date.now(); $("vuotoApp").style.display = "none";
-  $("btnSchermo").disabled = $("btnRigenera4").disabled = $("btnTelefono").disabled = false;
+  $("btnSchermo").disabled = $("btnRigenera4").disabled = $("btnAdmin").disabled = false;
 }
 $("btnSchermo").onclick = () => window.open("app.html?id=" + st.idApp, "_blank");
-// invia il disegno del passo 4 al server locale: il telefono lo scarica da app.html ("Dal PC")
-$("btnTelefono").onclick = async () => {
-  const btn = $("btnTelefono"); btn.disabled = true;
+// passo 4 → admin: invia esattamente il disegno del blocco 4 (zone scelte, linee, colori, originale)
+// come pacchetto leggero nel bucket privato "coloring" (cartella inbox/); nell'admin compare in "Arrivati dallo Studio".
+async function lineeNere(blob) { // linee grigie/nere su bianco → nere pure (l'app riconosce come linea solo i pixel scuri)
+  const bmp = await createImageBitmap(blob), c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+  const g = c.getContext("2d"); g.drawImage(bmp, 0, 0); const d = g.getImageData(0, 0, c.width, c.height);
+  for (let i = 0; i < d.data.length; i += 4) { const v = (d.data[i] + d.data[i + 1] + d.data[i + 2]) / 3 < 245 && d.data[i + 3] > 128 ? 0 : 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+  g.putImageData(d, 0, 0); return blobDi(c);
+}
+$("btnAdmin").onclick = async () => {
+  if (!window.team || !window.team.utente) return log("Per inviare all'admin entra prima con l'account del team (in alto).", "err");
+  const btn = $("btnAdmin"); btn.disabled = true;
   try {
     const d = await db(), rec = await new Promise((ok, ko) => { const t = d.transaction("app", "readonly"), r = t.objectStore("app").get(st.idApp); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); });
-    if (!rec) throw new Error("disegno del passo 4 non trovato");
-    const fd = new FormData(), meta = { nome: rec.nome, dati: rec.dati, mini: rec.mini, creato: rec.creato };
-    fd.append("meta", JSON.stringify(meta));
-    for (const k of ["mappa", "linee", "schizzo", "colorata", "originale"]) if (rec[k]) fd.append(k, rec[k], k);
-    log("Invio al telefono…");
-    const r = await fetch("/api/condividi", { method: "POST", body: fd, headers: { "x-app-password": $("pw").value, "x-nome": encodeURIComponent(rec.nome || "Disegno") } });
-    const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status);
-    log(`"${rec.nome}" pronto per il telefono: apri l'indirizzo del tunnel + /app.html e tocca "📥 Dal PC".`, "ok");
-  } catch (e) { log("Invio al telefono non riuscito: " + e.message, "err"); }
+    if (!rec) throw new Error("disegno del passo 4 non trovato: premi \"Ricrea dal passo 3\"");
+    log("Preparo il pacchetto per l'admin…");
+    const enc = new TextEncoder(), byt = async (b) => new Uint8Array(await b.arrayBuffer());
+    const dati = { formato: "arte-da-colorare", versione: 1, origine: "studio-passo-4", creato: new Date().toISOString(), zone_da: $("zone4").value,
+      nome: rec.dati.nome, larghezza: rec.dati.larghezza, altezza: rec.dati.altezza, palette: rec.dati.palette, zone: rec.dati.zone,
+      mappa_zone: { file: "dati/mappa_zone.png", codifica: "id = R + G*256 + B*65536" } };
+    const files = [
+      { nome: "dati/zone.json", dati: enc.encode(JSON.stringify(dati)) },
+      { nome: "dati/mappa_zone.png", dati: await byt(rec.mappa) },
+      { nome: "immagini/sketch.png", dati: await byt(await lineeNere(rec.linee)) },
+      { nome: "immagini/colorata_piatta.png", dati: await byt(rec.colorata) },
+      { nome: "immagini/originale.jpg", dati: await byt(rec.originale) },
+    ];
+    if (rec.schizzo) files.push({ nome: "immagini/schizzo_alta.png", dati: await byt(rec.schizzo) });
+    const blob = creaZip(files);
+    const nome = (rec.nome || "opera").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "opera";
+    const percorso = `inbox/${new Date().toISOString().replace(/[:.]/g, "-")}_${nome}.zip`;
+    log(`Invio all'admin (${(blob.size / 1048576).toFixed(1)} MB)…`);
+    const { error } = await window.team.client.storage.from("coloring").upload(percorso, blob, { contentType: "application/zip" });
+    if (error) throw new Error(error.message);
+    log(`"${rec.nome}" inviato: lo trovi nell'Admin, in "Arrivati dallo Studio".`, "ok");
+    if (window.team.sito) $("vaiAdmin").style.display = "";
+  } catch (e) { log("Invio all'admin non riuscito: " + e.message, "err"); }
   btn.disabled = false;
 };
 $("btnRigenera4").onclick = aggiornaColora;

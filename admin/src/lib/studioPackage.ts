@@ -51,6 +51,8 @@ export async function parseStudioZip(file: File): Promise<ParsedPackage> {
     'thumb.jpg': await thumbnail(colored, 480),
   };
   if (sketch) out['outline.png'] = sketch;
+  const hi = find(files, 'immagini/schizzo_alta.png'); // sketch ad alta risoluzione (blocco 4 dello Studio)
+  if (hi) out['schizzo.png'] = hi;
   return {
     name: d.nome || file.name.replace(/(_pacchetto)?\.zip$/i, ''),
     width: d.larghezza, height: d.altezza, colors: palette.length, zones: regions.length,
