@@ -6,6 +6,8 @@ Gioco "colora con i numeri" con generatore automatico di disegni.
 |---|---|---|
 | `studio/` | Studio, versione finale ("Arte da colorare"): Laboratorio con Gemini, puzzle senza AI fino a 500 colori, App Colora | Vercel (o Cloudflare Workers) |
 | `app/` | App per i giocatori (React + Vite, poi iOS/Android con Capacitor) | Vercel + store |
+| `admin/` | Pannello admin: archivio opere (schede, foto vere, pacchetti) e calendario delle pubblicazioni | Vercel |
+| `supabase/` | Migrazioni del database (opere, calendario, catalogo per l'app) | Supabase `color-game` |
 
 ## Studio
 - In locale su Windows: doppio clic su `studio/avvia.bat` (serve `studio/.dev.vars`, vedi `.dev.vars.example`).
@@ -16,3 +18,7 @@ Gioco "colora con i numeri" con generatore automatico di disegni.
 
 ## App giocatori
 Vercel: nuovo progetto, Root Directory `app`, framework Vite, output `dist`. Dettagli in [`app/README.md`](app/README.md).
+Per leggere il calendario dell'admin imposta su Vercel `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (vedi `app/.env.example`).
+
+## Admin
+Vercel: nuovo progetto, Root Directory `admin`, framework Vite. Dettagli in [`admin/README.md`](admin/README.md).

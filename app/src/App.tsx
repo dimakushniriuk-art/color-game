@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CatalogItem } from './engine/types';
-import { getCatalog, pickDaily } from './data/catalog';
+import { pickDaily, watchCatalog } from './data/catalog';
 import { registerVisit } from './state/rewards';
 import { Challenges } from './screens/Challenges';
 import { Celebrations } from './components/Celebrations';
@@ -30,7 +30,7 @@ export default function App() {
   const [route, setRoute] = useState<Route>(() => (history.state as Route) ?? HOME);
 
   const [dailyReward, setDailyReward] = useState(false);
-  useEffect(() => { getCatalog().then(setItems); }, []);
+  useEffect(() => watchCatalog(setItems), []);
   useEffect(() => { if (settings.onboardingDone && registerVisit()) setTimeout(() => setDailyReward(true), 600); }, [settings.onboardingDone]);
 
   // theme
