@@ -72,6 +72,7 @@
     <label><input type="checkbox" id="optGuidato" checked> Solo il colore giusto</label>
     <label><input type="checkbox" id="optEvidenzia" checked> Evidenzia le zone del colore scelto</label>
     <label><input type="checkbox" id="optNumeri" checked> Mostra i numeri</label>
+    <label><input type="checkbox" id="optContorni"> Mostra i contorni dei pezzi</label>
     <label>Colore delle linee <select id="optColLinee"><option value="#1c1c1c">Nero</option><option value="#555555">Grigio scuro</option><option value="#6b4a2e">Seppia</option><option value="#24406e">Blu</option><option value="#8a8a8a">Grigio chiaro</option></select></label>
     <button class="sec" id="btnCentra">Adatta allo schermo</button>
     <button class="sec" id="btnSalvaPng">Salva immagine (PNG)</button>
@@ -291,7 +292,7 @@ function renderVettori() {
   g.save(); g.setTransform(dpr * v.s, 0, 0, dpr * v.s, dpr * v.x, dpr * v.y); g.lineJoin = "round";
   // contorni dei pezzi da colorare: sottili, compaiono avvicinandosi
   // (ogni confine una volta sola; i confini che stanno sotto una linea dello sketch non si ripetono in grigio)
-  if (G.rete && f > 0) { g.strokeStyle = `rgba(110,110,110,${(0.65 * f).toFixed(3)})`; g.lineWidth = 0.9 / v.s;
+  if (G.rete && f > 0 && $("optContorni").checked) { g.strokeStyle = `rgba(110,110,110,${(0.65 * f).toFixed(3)})`; g.lineWidth = 0.9 / v.s;
     for (const t of G.rete.tratti) if (!t.linea && (!prog[t.z1] || !prog[t.z2])) g.stroke(t.p); }
 
   // linee dello sketch (forme piene, morbide)
@@ -338,6 +339,8 @@ $("btnOcchio").addEventListener("pointerdown", () => occhio(true)); ["pointerup"
 $("btnIndietro").onclick = () => { salvaProgressi(); disegnaHome(); };
 $("btnMenu").onclick = () => { const m = $("menu"); m.style.display = m.style.display === "flex" ? "none" : "flex"; };
 ["optEvidenzia", "optNumeri", "optRivela"].forEach((id) => $(id).addEventListener("change", render));
+$("optContorni").addEventListener("change", () => { try { localStorage.setItem("colora_contorni", $("optContorni").checked); } catch (e) {} render(); });
+try { $("optContorni").checked = localStorage.getItem("colora_contorni") === "true"; } catch (e) {}
 $("btnCentra").onclick = () => { centra(); $("menu").style.display = "none"; };
 $("btnSalvaPng").onclick = () => { const c = document.createElement("canvas"); c.width = G.W; c.height = G.H; const g = c.getContext("2d"); g.drawImage($("tela"), 0, 0); if (G.schizzo) g.drawImage($("schizzo"), 0, 0, G.W, G.H); if (G.vLinee) { g.fillStyle = $("optColLinee").value; g.fill(G.vLinee); } c.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = G.op.nome + "_colorato.png"; a.click(); }); };
 $("btnAzzera").onclick = () => { if (!window.confirm("Cancellare tutti i colori di questo disegno?")) return; G.op.progresso.fill(0); G.storia = []; render(); aggiornaPerc(); disegnaTavolozza(); salvaProgressi(); $("menu").style.display = "none"; };
