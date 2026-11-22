@@ -56,8 +56,8 @@ export function App() {
           <a className={route.name === 'calendar' ? 'on' : ''} href="#/calendario">Calendario</a>
         </nav>
         <div className="jump">
-          <a className="btn ghost" href={STUDIO_URL} target="_blank" rel="noopener">🎨 Apri lo Studio ↗</a>
-          <a className="btn ghost" href={APP_URL} target="_blank" rel="noopener">📱 Apri l'App ↗</a>
+          <a className="btn ghost" href={STUDIO_URL}>🎨 Studio</a>
+          <a className="btn ghost" href={APP_URL} target="_blank" rel="noopener">📱 App ↗</a>
           <button className="link" title={session.user.email ?? ''} onClick={() => supabase.auth.signOut()}>Esci</button>
         </div>
       </header>

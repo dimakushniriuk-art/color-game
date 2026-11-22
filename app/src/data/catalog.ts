@@ -8,12 +8,15 @@ import { loadPackage } from './packageLoader';
  * Catalogo remoto, in ordine di priorità:
  *  1. Supabase (calendario del pannello admin): VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY → rpc get_catalog.
  *     Restituisce solo le opere già uscite (publish_at <= adesso); next_at = prossima uscita.
- *  2. VITE_CATALOG_URL: JSON { "items": [ { id, title, category, difficulty, baseUrl, thumbnailUrl?, isNew? } ] }.
+ *  2. VITE_CATALOG_URL (solo con VITE_SUPABASE_URL=off): JSON { "items": [ { id, title, category, difficulty, baseUrl, thumbnailUrl?, isNew? } ] }.
  * baseUrl è la cartella di un pacchetto (palette.json, regions.json, regions_idmap.png, outline.png).
- * Senza nessuna delle due variabili si gioca solo con i disegni demo.
+ * I disegni demo restano sempre in fondo alla galleria.
  */
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, '');
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+// Valori predefiniti = progetto Supabase "color-game" (la chiave publishable è pubblica per definizione).
+// Per giocare solo coi demo: VITE_SUPABASE_URL=off
+const SUPABASE_ENV = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_URL = SUPABASE_ENV === 'off' ? undefined : (SUPABASE_ENV || 'https://vcvboeioopplfqhqpqvf.supabase.co').replace(/\/$/, '');
+const SUPABASE_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || 'sb_publishable_dcPyb3gwCap83RYt-mcWig__ypgYX5S';
 const CATALOG_URL = import.meta.env.VITE_CATALOG_URL as string | undefined;
 const DEMO_SIZE = 800;
 const NEW_DAYS = 3;

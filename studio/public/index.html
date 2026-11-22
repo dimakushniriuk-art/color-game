@@ -91,7 +91,7 @@
   <div class="pw">
     <label for="pw">Password</label><input type="password" id="pw" placeholder="password app">
     <button class="sec" id="btnCheck">Verifica</button><span id="statoPw"></span>
-    <nav><a href="/app.html">🎨 App Colora</a><a href="/puzzle.html">Puzzle senza AI</a><a href="/ai.html">AI semplice</a></nav>
+    <nav><a href="app.html">🎨 App Colora</a><a href="puzzle.html">Puzzle senza AI</a><a href="ai.html">AI semplice</a></nav>
   </div>
 </header>
 
@@ -288,6 +288,8 @@
         <button class="sec" id="prLeg" disabled>Stampa legenda</button>
       </div>
       <div class="azioni"><button class="sec" id="dlSvg" disabled>Scarica SVG (vettoriale)</button><button class="sec" id="dlPdf" disabled>Scarica PDF A4</button></div>
+      <button class="principale" id="btnAdmin" disabled style="background:var(--ok);border-color:var(--ok)">📤 Invia all'admin</button>
+      <a id="vaiAdmin" href="/admin/#/opere" style="display:none;font-family:system-ui;font-size:13px">Apri l'admin →</a>
       <button class="principale" id="btnPacchetto" disabled>⬇ Scarica pacchetto per app (.zip)</button>
       <button class="principale" id="btnApp" disabled style="background:var(--accento2);border-color:var(--accento2)">🎨 Colora nell'app</button>
       <div class="nota">Il pacchetto contiene tutte le immagini, la mappa delle zone, la tavolozza e un file dati (JSON) pronto per un'app di colorazione.</div>
@@ -315,6 +317,8 @@
   <div id="log"></div>
 </main>
 
+<script src="vendor/supabase-2.119.2.js"></script>
+<script src="team.js"></script>
 <script src="matite.js"></script>
 <script>
 "use strict";
@@ -360,7 +364,7 @@ function aggiorna() {
   $("btnColGemini").disabled = !st.base || !st.sketch || occ;
   $("dlSketch").disabled = !st.sketch; $("dlSeg").disabled = !st.seg;
   ["dlCol", "prCol", "dlNum", "prNum", "prLeg"].forEach((id) => ($(id).disabled = !st.res && !(id === "dlCol" && st.colGemini)));
-  $("btnPacchetto").disabled = $("btnApp").disabled = $("dlSvg").disabled = $("dlPdf").disabled = !st.res;
+  $("btnPacchetto").disabled = $("btnAdmin").disabled = $("btnApp").disabled = $("dlSvg").disabled = $("dlPdf").disabled = !st.res;
   $("btnAllinea").disabled = !st.base || !st.sketch; $("btnAutoSketch").disabled = !st.base || occ; $("btnAutoCornice").disabled = !st.img || occ; $("btnSalvaGal").disabled = !st.base;
 }
 
@@ -1156,28 +1160,32 @@ function creaZip(files) { // files: [{nome, dati: Uint8Array}] — metodo "store
   return new Blob([...parti, ...centrale, new Uint8Array(e.buffer)], { type: "application/zip" });
 }
 const pngBytes = (cv, tipo = "image/png", q) => new Promise((ok) => cv.toBlob(async (b) => ok(new Uint8Array(await b.arrayBuffer())), tipo, q));
-async function scaricaPacchetto() {
-  const r = st.res; if (!r) return; log("Preparo il pacchetto…");
+// completo=false: solo i file che servono all'admin/app (originale, sketch, colorata, mappa, zone.json) → zip leggero
+async function filePacchetto(completo = true) {
+  const r = st.res; if (!r) return null;
   const enc = new TextEncoder(), files = [], tot = r.area.reduce((a, b) => a + b, 0);
   // mappa delle zone: id zona codificato nel colore (R + G*256 + B*65536), per toccare/riempire le zone nell'app
   const mz = document.createElement("canvas"); mz.width = r.W; mz.height = r.H; const g = mz.getContext("2d"), id = g.createImageData(r.W, r.H);
   for (let i = 0; i < r.W * r.H; i++) { const z = r.full[i], o = i * 4; id.data[o] = z & 255; id.data[o + 1] = (z >> 8) & 255; id.data[o + 2] = (z >> 16) & 255; id.data[o + 3] = 255; }
   g.putImageData(id, 0, 0);
   const vista = $("vista").value, stile = $("stilePagina").value;
-  $("vista").value = "piatta"; const colPiatta = disegnaColorata(); $("vista").value = "morbida"; const colMorbida = disegnaColorata(); $("vista").value = vista;
-  $("stilePagina").value = "linee"; const pagLinee = disegnaNumerata(); $("stilePagina").value = "grigi"; const pagGrigi = disegnaNumerata(); $("stilePagina").value = stile;
+  $("vista").value = "piatta"; const colPiatta = disegnaColorata(); $("vista").value = "morbida"; const colMorbida = completo ? disegnaColorata() : null; $("vista").value = vista;
+  let pagLinee = null, pagGrigi = null;
+  if (completo) { $("stilePagina").value = "linee"; pagLinee = disegnaNumerata(); $("stilePagina").value = "grigi"; pagGrigi = disegnaNumerata(); $("stilePagina").value = stile; }
   const lineeSolo = canvasDa(st.sketch, r.W, r.H);
   files.push({ nome: "immagini/originale.jpg", dati: await pngBytes(canvasDa(st.base), "image/jpeg", 0.92) });
   files.push({ nome: "immagini/sketch.png", dati: await pngBytes(lineeSolo) });
-  if (st.seg) files.push({ nome: "immagini/segmentata.png", dati: await pngBytes(canvasDa(st.seg)) });
   files.push({ nome: "immagini/colorata_piatta.png", dati: await pngBytes(colPiatta) });
-  files.push({ nome: "immagini/colorata_morbida.png", dati: await pngBytes(colMorbida) });
-  files.push({ nome: "immagini/da_colorare_numeri.png", dati: await pngBytes(pagLinee) });
-  files.push({ nome: "immagini/da_colorare_grigi.png", dati: await pngBytes(pagGrigi) });
   files.push({ nome: "dati/mappa_zone.png", dati: await pngBytes(mz) });
-  files.push({ nome: "vettoriale/da_colorare.svg", dati: enc.encode(creaSVG("da_colorare")) });
-  files.push({ nome: "vettoriale/colorata.svg", dati: enc.encode(creaSVG("colorata")) });
-  files.push({ nome: "stampa/" + st.nome + ".pdf", dati: new Uint8Array(await (await pdfOpera()).arrayBuffer()) });
+  if (completo) {
+    if (st.seg) files.push({ nome: "immagini/segmentata.png", dati: await pngBytes(canvasDa(st.seg)) });
+    files.push({ nome: "immagini/colorata_morbida.png", dati: await pngBytes(colMorbida) });
+    files.push({ nome: "immagini/da_colorare_numeri.png", dati: await pngBytes(pagLinee) });
+    files.push({ nome: "immagini/da_colorare_grigi.png", dati: await pngBytes(pagGrigi) });
+    files.push({ nome: "vettoriale/da_colorare.svg", dati: enc.encode(creaSVG("da_colorare")) });
+    files.push({ nome: "vettoriale/colorata.svg", dati: enc.encode(creaSVG("colorata")) });
+    files.push({ nome: "stampa/" + st.nome + ".pdf", dati: new Uint8Array(await (await pdfOpera()).arrayBuffer()) });
+  }
   const palette = r.palette.map((c, i) => { const m = nomeMatita(i); return { numero: i + 1, hex: hex(c), rgb: c, percentuale: +(100 * r.counts[i] / tot).toFixed(3), ...(m ? { matita: { codice: m.cod, nome: m.nome, tavolozza: $("tavolozza").selectedOptions[0].text } } : {}) }; });
   const zone = []; for (let k = 0; k < r.R; k++) zone.push({ id: k, colore: r.regColor[k] + 1, area_px: r.area[k], zona_sketch: r.zonaDi[k], etichetta: { x: Math.round(r.pos[k * 3]), y: Math.round(r.pos[k * 3 + 1]), raggio: +r.pos[k * 3 + 2].toFixed(1) } });
   const dati = { formato: "arte-da-colorare", versione: 1, creato: new Date().toISOString(), nome: st.nome, larghezza: r.W, altezza: r.H,
@@ -1185,12 +1193,37 @@ async function scaricaPacchetto() {
     gemini: { modello: $("modello").value, risoluzione: $("risoluzione").value, formato: st.ratio, prompt_sketch: $("p1").value, prompt_segmentazione: $("p2").value, prompt_colorazione: $("p3").value },
     mappa_zone: { file: "dati/mappa_zone.png", codifica: "id = R + G*256 + B*65536" }, palette, zone };
   files.push({ nome: "dati/zone.json", dati: enc.encode(JSON.stringify(dati, null, 1)) });
+  if (!completo) return files;
   files.push({ nome: "dati/legenda.csv", dati: enc.encode("numero;hex;r;g;b;percentuale;matita\n" + palette.map((p) => `${p.numero};${p.hex};${p.rgb.join(";")};${String(p.percentuale).replace(".", ",")};${p.matita ? p.matita.codice + " " + p.matita.nome : ""}`).join("\n")) });
   files.push({ nome: "LEGGIMI.txt", dati: enc.encode(`Pacchetto "${st.nome}" — Arte da colorare\r\n\r\nimmagini/ : originale, sketch, segmentata, colorata (piatta e morbida), pagine da colorare (numeri, scala di grigi)\r\ndati/zone.json : dimensioni, tavolozza numerata, elenco zone (colore, area, posizione del numero), parametri e prompt usati\r\ndati/mappa_zone.png : ogni pixel contiene l'id della sua zona (id = R + G*256 + B*65536). Un'app legge il pixel toccato e riempie la zona col colore indicato in zone.json\r\ndati/legenda.csv : tavolozza per Excel\r\nvettoriale/ : SVG (zone con id e numero colore, linee, numeri)\r\nstampa/ : PDF A4 pronto da stampare (pagina da colorare, legenda, riferimento)\r\nPer colorare sul telefono: apri app.html e carica questo zip.\r\n`) });
+  return files;
+}
+async function scaricaPacchetto() {
+  if (!st.res) return; log("Preparo il pacchetto…");
+  const files = await filePacchetto(true);
   const blob = creaZip(files), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = st.nome + "_pacchetto.zip"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   log(`Pacchetto creato: ${files.length} file, ${(blob.size / 1048576).toFixed(1)} MB.`, "ok");
 }
 $("btnPacchetto").onclick = scaricaPacchetto;
+// ---------- invio diretto all'admin (Supabase: bucket privato "coloring", cartella inbox/) ----------
+async function inviaAdmin() {
+  if (!st.res) return;
+  if (!window.team || !window.team.utente) return log("Per inviare all'admin entra prima con l'account del team (in alto).", "err");
+  const btn = $("btnAdmin"); btn.disabled = true;
+  try {
+    log("Preparo il pacchetto per l'admin…");
+    const files = await filePacchetto(false), blob = creaZip(files);
+    const nome = (st.nome || "opera").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "opera";
+    const percorso = `inbox/${new Date().toISOString().replace(/[:.]/g, "-")}_${nome}.zip`;
+    log(`Invio all'admin (${(blob.size / 1048576).toFixed(1)} MB)…`);
+    const { error } = await window.team.client.storage.from("coloring").upload(percorso, blob, { contentType: "application/zip" });
+    if (error) throw new Error(error.message);
+    log(window.team.sito ? `"${st.nome}" inviato: lo trovi nell'Admin, in "Arrivati dallo Studio".` : `"${st.nome}" inviato all'admin (Arrivati dallo Studio).`, "ok");
+    if (window.team.sito) $("vaiAdmin").style.display = "";
+  } catch (e) { log("Invio all'admin non riuscito: " + e.message, "err"); }
+  btn.disabled = !st.res;
+}
+$("btnAdmin").onclick = inviaAdmin;
 // invia l'opera all'app di colorazione (stesso browser). opz.id fisso = sostituisce la versione precedente
 function origAllineata(W, H) { const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
   const sc = Number($("sc").value) / 100, dx = Number($("dx").value) / 1000 * W, dy = Number($("dy").value) / 1000 * H, w = W * sc, h = H * sc; g.drawImage(st.base, (W - w) / 2 + dx, (H - h) / 2 + dy, w, h); return c; }

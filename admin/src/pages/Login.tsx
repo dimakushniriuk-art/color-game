@@ -16,7 +16,7 @@ export function Login() {
   async function magicLink() {
     if (!email.trim()) return setMsg({ text: 'Scrivi prima la tua email.' });
     setBusy(true); setMsg(null);
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: false, emailRedirectTo: location.origin } });
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: false, emailRedirectTo: location.origin + location.pathname } });
     setMsg(error ? { text: error.message } : { ok: true, text: 'Ti ho mandato un link di accesso: aprilo da questo computer.' });
     setBusy(false);
   }

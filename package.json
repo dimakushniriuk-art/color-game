@@ -1,0 +1,9 @@
+{
+  "name": "color-game",
+  "private": true,
+  "type": "module",
+  "description": "Sito unico: App su /, Admin su /admin/, Studio su /studio/, API Gemini su /api/",
+  "scripts": {
+    "build": "node scripts/build-site.mjs"
+  }
+}

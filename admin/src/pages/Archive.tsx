@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { go } from '../App';
 import { createArtwork, fetchArtworks, fetchPublications, updateArtwork, useLoad } from '../lib/data';
 import { fmtDateTime } from '../lib/dates';
 import { parseStudioZip, uploadPackage } from '../lib/studioPackage';
-import { publicUrl, upload } from '../lib/supabase';
+import { INBOX_BUCKET, INBOX_DIR, publicUrl, supabase, upload } from '../lib/supabase';
 import { STATUS_LABEL, type Artwork, type Status } from '../lib/types';
 
 export function coverOf(a: Artwork) { return publicUrl(a.images[0]?.path ?? a.thumb_path); }
@@ -80,6 +80,8 @@ export function Archive() {
       {busy && <div className="notice">{busy}</div>}
       {(err || arts.error) && <div className="notice err">{err || arts.error}</div>}
 
+      <Inbox busy={!!busy} setBusy={setBusy} setErr={setErr} onImported={(a) => go('opere/' + a.id)} />
+
       <div className="filters">
         <input className="search" placeholder="Cerca per titolo, pittore, anno, museo, tag…" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="seg">
@@ -92,7 +94,7 @@ export function Archive() {
       {arts.data && !arts.data.length && (
         <div className="empty">
           <h3>L'archivio è vuoto</h3>
-          <p>Nello Studio prepara un'opera e scarica il <b>pacchetto per app (.zip)</b>, poi importalo qui. Oppure crea una scheda vuota con <b>＋ Nuova opera</b>.</p>
+          <p>Nello Studio prepara un'opera e premi <b>📤 Invia all'admin</b>: comparirà qui sopra in "Arrivati dallo Studio". Puoi anche importare uno zip scaricato o creare una scheda vuota con <b>＋ Nuova opera</b>.</p>
         </div>
       )}
 
@@ -116,5 +118,50 @@ export function Archive() {
         })}
       </div>
     </div>
+  );
+}
+
+interface InboxItem { name: string; size: number; at: string }
+
+/** Pacchetti inviati dallo Studio col pulsante "📤 Invia all'admin" (bucket privato, cartella inbox/). */
+function Inbox({ onImported, setBusy, setErr, busy }: { onImported(a: Artwork): void; setBusy(m: string | null): void; setErr(m: string | null): void; busy: boolean }) {
+  const [items, setItems] = useState<InboxItem[] | null>(null);
+  const load = () => supabase.storage.from(INBOX_BUCKET).list(INBOX_DIR, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } })
+    .then(({ data }) => setItems((data ?? []).filter((f) => f.name.endsWith('.zip')).map((f) => ({
+      name: f.name, size: (f.metadata as { size?: number } | null)?.size ?? 0, at: f.created_at ?? '' }))));
+  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, []);
+  if (!items?.length) return null;
+
+  const label = (n: string) => n.replace(/^[0-9TZ-]+_/, '').replace(/\.zip$/, '').replace(/-/g, ' ');
+  async function importa(it: InboxItem) {
+    setErr(null);
+    try {
+      setBusy(`Scarico ${label(it.name)}…`);
+      const { data, error } = await supabase.storage.from(INBOX_BUCKET).download(`${INBOX_DIR}/${it.name}`);
+      if (error || !data) throw new Error(error?.message ?? 'download non riuscito');
+      const art = await importZip(new File([data], it.name, { type: 'application/zip' }), setBusy);
+      await supabase.storage.from(INBOX_BUCKET).remove([`${INBOX_DIR}/${it.name}`]);
+      setBusy(null); onImported(art);
+    } catch (e: any) { setErr(e.message); setBusy(null); }
+  }
+  async function scarta(it: InboxItem) {
+    if (!confirm(`Scartare "${label(it.name)}"? Il pacchetto inviato dallo Studio verrà cancellato.`)) return;
+    await supabase.storage.from(INBOX_BUCKET).remove([`${INBOX_DIR}/${it.name}`]);
+    load();
+  }
+  return (
+    <section className="inbox panel">
+      <h3>📥 Arrivati dallo Studio <span className="badge cal">{items.length}</span></h3>
+      <p className="muted small">Inviati con "📤 Invia all'admin". Importa per creare la scheda dell'opera con il suo pacchetto.</p>
+      <ul>
+        {items.map((it) => (
+          <li key={it.name}>
+            <span><b>{label(it.name)}</b> <span className="muted small">{it.at && new Date(it.at).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {(it.size / 1048576).toFixed(1)} MB</span></span>
+            <button className="small" disabled={busy} onClick={() => importa(it)}>Importa</button>
+            <button className="link danger" disabled={busy} onClick={() => scarta(it)}>Scarta</button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
