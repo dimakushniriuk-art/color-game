@@ -1289,6 +1289,7 @@ $("btnAdmin").onclick = async () => {
       { nome: "dati/zone.json", dati: enc.encode(JSON.stringify(dati)) },
       { nome: "dati/mappa_zone.png", dati: await byt(rec.mappa) },
       { nome: "immagini/sketch.png", dati: await byt(await lineeNere(rec.linee)) },
+      { nome: "immagini/linee.png", dati: await byt(rec.linee) }, // linee originali del blocco 4 (grigio = contorni dei pezzi)
       { nome: "immagini/colorata_piatta.png", dati: await byt(rec.colorata) },
       { nome: "immagini/originale.jpg", dati: await byt(rec.originale) },
     ];

@@ -14,7 +14,13 @@ const textOn = (rgb: [number, number, number]) => (rgb[0] * 0.299 + rgb[1] * 0.5
 
 interface PlayProps { item: CatalogItem; isDaily: boolean; onBack(): void; onComplete(): void; onChallenges(): void }
 
-export function Play({ item, isDaily, onBack, onComplete, onChallenges }: PlayProps) {
+export function Play(props: PlayProps) {
+  // opere vere (dall'admin): stesso motore e stessa visualizzazione del blocco 4 dello Studio
+  if (props.item.source === 'remote' && props.item.baseUrl) return <StudioPlay {...props} />;
+  return <DemoPlay {...props} />;
+}
+
+function DemoPlay({ item, isDaily, onBack, onComplete, onChallenges }: PlayProps) {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -236,6 +242,85 @@ function PlayBoard({ item, isDaily, puzzle, onBack, onComplete, onChallenges }: 
         })}
       </div>
 
+      {noHints && (
+        <Modal
+          title="Suggerimenti finiti"
+          text={player.coins >= SHOP[0].price ? `Puoi comprarne uno per ${SHOP[0].price} monete (ne hai ${player.coins}) oppure guadagnarli con le sfide.` : `Ti servono ${SHOP[0].price} monete (ne hai ${player.coins}). Completa le sfide per guadagnare suggerimenti e monete.`}
+          confirmLabel={player.coins >= SHOP[0].price ? `Compra · ${SHOP[0].price} 🪙` : 'Vai alle sfide'}
+          cancelLabel="Chiudi"
+          onConfirm={() => { setNoHints(false); if (player.coins >= SHOP[0].price) { buy(SHOP[0]); } else onChallenges(); }}
+          onCancel={() => setNoHints(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Gioco con il motore del blocco 4 dello Studio (public/gioco/app.html, copiato da studio/public/app.html):
+ * stesse linee, stesso menu ⋯, "Rivela l'originale", numeri, zoom. L'app gestisce premi, suggerimenti e progressi.
+ */
+function StudioPlay({ item, isDaily, onBack, onComplete, onChallenges }: PlayProps) {
+  const player = usePlayer();
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [noHints, setNoHints] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [floats, setFloats] = useState<{ id: number; text: string }[]>([]);
+  const floatText = (text: string) => {
+    const id = performance.now();
+    setFloats((f) => [...f, { id, text }]);
+    setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1400);
+  };
+  const st = useRef({ order: getProgress(item.id)?.order ?? [], total: getProgress(item.id)?.total ?? 0, hints: getProgress(item.id)?.hintsUsed ?? 0, rewarded: new Set<number>(getProgress(item.id)?.order ?? []), done: false });
+  const src = useMemo(() => `./gioco/app.html?gioco=1&id=${encodeURIComponent(item.id)}&pkg=${encodeURIComponent(item.baseUrl!)}&titolo=${encodeURIComponent(item.title)}`, [item]);
+  const send = (m: object) => frame.current?.contentWindow?.postMessage({ cg: 1, ...m }, '*');
+  const persist = (completed: boolean) => saveProgress(item.id, { order: st.current.order, total: st.current.total, completed, updatedAt: Date.now(), hintsUsed: st.current.hints });
+
+  useEffect(() => { send({ tipo: 'aiuti', n: player.hints }); }, [player.hints]);
+
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.source !== frame.current?.contentWindow || !e.data?.cg) return;
+      const m = e.data, s = st.current;
+      switch (m.tipo) {
+        case 'pronto':
+          s.total = m.totale; s.order = (m.fatte as number[]); s.order.forEach((z) => s.rewarded.add(z));
+          persist(s.order.length >= s.total && s.total > 0); send({ tipo: 'aiuti', n: getPlayer().hints }); break;
+        case 'zona':
+          if (!s.order.includes(m.z)) s.order.push(m.z);
+          if (!s.rewarded.has(m.z)) { s.rewarded.add(m.z); events.zone(); }
+          feedback.fill(); persist(false); break;
+        case 'annulla': s.order = s.order.filter((z) => z !== m.z); persist(false); break;
+        case 'azzera': s.order = []; persist(false); break;
+        case 'colore': feedback.colorDone(); events.color(); floatText(`Colore ${m.n} completato · +2 🪙`); break;
+        case 'fine':
+          if (s.done) break;
+          s.done = true; persist(true); feedback.complete();
+          lastCompletion.levelBefore = levelInfo(getPlayer().xp).level;
+          lastCompletion.reward = events.drawing({ hard: item.difficulty === 'difficile', daily: isDaily, hintsUsed: s.hints });
+          lastCompletion.id = item.id;
+          setTimeout(onComplete, 1300); break;
+        case 'aiuto':
+          if (events.useHint()) { s.hints++; persist(false); send({ tipo: 'aiuto-ok' }); } else setNoHints(true); break;
+        case 'indietro': onBack(); break;
+        case 'errore': setError(m.msg); break;
+      }
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
+
+  if (error) return (
+    <div className="center-msg">
+      <p>Impossibile aprire il disegno.</p><small>{error}</small>
+      <button className="btn btn-primary" onClick={onBack}>Torna indietro</button>
+    </div>
+  );
+  return (
+    <div className="play play-studio">
+      <div className="floats">{floats.map((f) => <div key={f.id} className="float-pill">{f.text}</div>)}</div>
+      <iframe ref={frame} className="studio-frame" src={src} title={item.title} allow="vibrate" />
       {noHints && (
         <Modal
           title="Suggerimenti finiti"

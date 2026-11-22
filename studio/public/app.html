@@ -65,6 +65,7 @@
     <div class="tit"><span id="titolo"></span> · <span id="perc">0%</span></div>
     <button class="sec" id="btnAnnulla" title="Annulla">↶</button>
     <button class="sec" id="btnOcchio" title="Tieni premuto per vedere l'originale">👁</button>
+    <button class="sec" id="btnAiuto" title="Suggerimento" style="display:none">💡 <span id="nAiuti"></span></button>
     <button class="sec" id="btnMenu" title="Menu">⋯</button>
   </div>
   <div id="menu">
@@ -161,6 +162,42 @@ $("btnDalPC").onclick = () => mostraDalPC(true);
 $("fileZip").onchange = async (e) => { const files = [...e.target.files]; e.target.value = ""; let ultimo = null;
   for (const f of files) { try { ultimo = await importaZip(f); } catch (err) { alert(`"${f.name}": ${err.message}`); } }
   if (files.length === 1 && ultimo) apri(ultimo); else disegnaHome(); };
+
+// ---------- modalità gioco: dentro l'app dei giocatori (app.html?gioco=1&pkg=<cartella pacchetto>&id=<opera>) ----------
+// Stesso motore e stessa visualizzazione del blocco 4 dello Studio. L'app riceve gli eventi per premi e progressi.
+const QS = new URLSearchParams(location.search), GIOCO = QS.get("gioco") === "1" && window.parent !== window;
+function manda(m) { if (GIOCO) window.parent.postMessage(Object.assign({ cg: 1 }, m), "*"); }
+async function apriPacchetto(base, idOpera, titolo) {
+  base = base.replace(/\/?$/, "/");
+  const prendi = async (n, obblig) => { const r = await fetch(base + n, { cache: "force-cache" }); if (!r.ok) { if (obblig) throw new Error(n + " non trovato"); return null; } return r; };
+  const recId = "g-" + idOpera, vecchio = await dbOp("readonly", (s) => s.get(recId));
+  let dati = vecchio && vecchio.base === base ? vecchio.dati : null;
+  if (!dati) dati = await (await prendi("zone.json", true)).json();
+  const blob = async (n) => { const r = await prendi(n, false); return r ? await r.blob() : null; };
+  const [mappa, linee, outline, schizzo, colorata, originale] = await Promise.all(["regions_idmap.png", "linee.png", "outline.png", "schizzo.png", "colorata.png", "originale.jpg"].map(blob));
+  if (!mappa) throw new Error("mappa delle zone non trovata");
+  const rec = { id: recId, base, nome: titolo || dati.nome || "Disegno", creato: vecchio ? vecchio.creato : Date.now(), aggiornato: Date.now(), dati,
+    mappa, linee: linee || outline, schizzo, colorata, originale,
+    progresso: vecchio && vecchio.base === base && vecchio.progresso.length === dati.zone.length ? vecchio.progresso : new Uint16Array(dati.zone.length) };
+  if (!rec.linee) { const c = document.createElement("canvas"); c.width = dati.larghezza; c.height = dati.altezza; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); rec.linee = await new Promise((ok) => c.toBlob(ok)); }
+  await dbOp("readwrite", (s) => s.put(rec));
+  await apri(recId);
+  const ok = []; for (let k = 0; k < G.colZona.length; k++) if (G.op.progresso[k] === G.colZona[k]) ok.push(k);
+  manda({ tipo: "pronto", totale: G.colZona.length, fatte: ok });
+}
+function aiuto() { // zoom su una zona ancora da colorare del colore scelto (la più piccola: la più difficile da trovare)
+  const libere = G.op.dati.zone.filter((z) => G.colZona[z.id] === G.sel && G.op.progresso[z.id] !== G.sel);
+  if (!libere.length) return;
+  const z = libere.reduce((a, b) => (b.etichetta.raggio < a.etichetta.raggio ? b : a)), a = $("area").getBoundingClientRect();
+  const s = Math.min(12, Math.max(G.fitS * 3, 40 / Math.max(2, z.etichetta.raggio)));
+  G.vista = { s, x: a.width / 2 - (z.etichetta.x + 0.5) * s, y: a.height / 2 - (z.etichetta.y + 0.5) * s }; applicaVista();
+  avviso(`Ecco una zona del colore ${G.sel}`);
+}
+window.addEventListener("message", (e) => {
+  if (e.source !== window.parent || !e.data || !e.data.cg) return;
+  if (e.data.tipo === "aiuti") $("nAiuti").textContent = e.data.n;
+  if (e.data.tipo === "aiuto-ok") aiuto();
+});
 
 // ---------- colorazione ----------
 const G = { op: null, W: 0, H: 0, zona: null, linea: null, colZona: null, pal: [], sel: 1, storia: [], vista: { s: 1, x: 0, y: 0 }, ctx: null, img: null, soluzione: false, colorata: null };
@@ -330,20 +367,23 @@ function tocca(x, y) {
   if (G.op.progresso[z] === G.sel) return;
   G.storia.push([z, G.op.progresso[z]]); if (G.storia.length > 500) G.storia.shift();
   G.op.progresso[z] = G.sel; render(); aggiornaPerc(); salvaProgressi();
-  if (restanti()[G.sel] === 0) { const fatto = G.sel, n = prossimoNonFinito(fatto); if (n) { G.sel = n; renderStrato(); aggiornaDettaglio(); avviso(`Colore ${fatto} finito ✓ — ora il ${n}`); } else avviso("🎉 Tutti i colori completati!"); }
+  if (G.sel === G.colZona[z]) manda({ tipo: "zona", z, totale: G.colZona.length });
+  if (restanti()[G.sel] === 0) { const fatto = G.sel, n = prossimoNonFinito(fatto); manda({ tipo: "colore", n: fatto });
+    if (n) { G.sel = n; renderStrato(); aggiornaDettaglio(); avviso(`Colore ${fatto} finito ✓ — ora il ${n}`); } else { avviso("🎉 Tutti i colori completati!"); manda({ tipo: "fine" }); } }
   disegnaTavolozza(); if (navigator.vibrate) navigator.vibrate(8);
 }
-$("btnAnnulla").onclick = () => { const u = G.storia.pop(); if (!u) return; G.op.progresso[u[0]] = u[1]; render(); aggiornaPerc(); disegnaTavolozza(); salvaProgressi(); };
+$("btnAnnulla").onclick = () => { const u = G.storia.pop(); if (!u) return; G.op.progresso[u[0]] = u[1]; manda({ tipo: "annulla", z: u[0] }); render(); aggiornaPerc(); disegnaTavolozza(); salvaProgressi(); };
 const occhio = (on) => { if (!G.colorata && !G.orig) { if (on) avviso("Riferimento a colori non presente"); return; } G.soluzione = on; render(); };
 $("btnOcchio").addEventListener("pointerdown", () => occhio(true)); ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => $("btnOcchio").addEventListener(ev, () => G.soluzione && occhio(false)));
-$("btnIndietro").onclick = () => { salvaProgressi(); disegnaHome(); };
+$("btnIndietro").onclick = () => { salvaProgressi(); if (GIOCO) manda({ tipo: "indietro" }); else disegnaHome(); };
+$("btnAiuto").onclick = () => manda({ tipo: "aiuto" });
 $("btnMenu").onclick = () => { const m = $("menu"); m.style.display = m.style.display === "flex" ? "none" : "flex"; };
 ["optEvidenzia", "optNumeri", "optRivela"].forEach((id) => $(id).addEventListener("change", render));
 $("optContorni").addEventListener("change", () => { try { localStorage.setItem("colora_contorni", $("optContorni").checked); } catch (e) {} render(); });
 try { $("optContorni").checked = localStorage.getItem("colora_contorni") === "true"; } catch (e) {}
 $("btnCentra").onclick = () => { centra(); $("menu").style.display = "none"; };
 $("btnSalvaPng").onclick = () => { const c = document.createElement("canvas"); c.width = G.W; c.height = G.H; const g = c.getContext("2d"); g.drawImage($("tela"), 0, 0); if (G.schizzo) g.drawImage($("schizzo"), 0, 0, G.W, G.H); if (G.vLinee) { g.fillStyle = $("optColLinee").value; g.fill(G.vLinee); } c.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = G.op.nome + "_colorato.png"; a.click(); }); };
-$("btnAzzera").onclick = () => { if (!window.confirm("Cancellare tutti i colori di questo disegno?")) return; G.op.progresso.fill(0); G.storia = []; render(); aggiornaPerc(); disegnaTavolozza(); salvaProgressi(); $("menu").style.display = "none"; };
+$("btnAzzera").onclick = () => { if (!window.confirm("Cancellare tutti i colori di questo disegno?")) return; G.op.progresso.fill(0); G.storia = []; manda({ tipo: "azzera" }); render(); aggiornaPerc(); disegnaTavolozza(); salvaProgressi(); $("menu").style.display = "none"; };
 
 // ---------- zoom e spostamento (dita, rotella, trascinamento) ----------
 let rafZoom = 0;
@@ -371,7 +411,13 @@ function zoomIn(cx, cy, f) { const v = G.vista, s2 = Math.max(0.1, Math.min(12, 
 
 // ---------- apertura diretta dal Laboratorio (app.html?id=...) e offline ----------
 (async () => {
-  const qs = new URLSearchParams(location.search), id = qs.get("id");
+  const qs = QS, id = qs.get("id");
+  if (GIOCO) { // dentro l'app dei giocatori
+    document.body.classList.add("incorporato"); $("home").style.display = "none"; $("btnAiuto").style.display = "";
+    try { await apriPacchetto(qs.get("pkg"), id, qs.get("titolo")); }
+    catch (e) { manda({ tipo: "errore", msg: e.message }); document.body.innerHTML = '<p style="padding:20px;font-family:system-ui">Impossibile aprire il disegno: ' + e.message.replace(/</g, "&lt;") + "</p>"; }
+    return;
+  }
   if (qs.get("incorporato")) { $("btnIndietro").style.display = "none"; document.body.classList.add("incorporato"); }
   if (id) apri(id); else { disegnaHome(); if (!qs.get("incorporato")) mostraDalPC(false); }
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

@@ -4,6 +4,7 @@
 //   regions.json       [{region_id, color_id}]
 //   regions_idmap.png  = dati/mappa_zone.png (id = R + G*256 + B*65536)
 //   outline.png        = immagini/sketch.png (linee nere)
+// e per il motore del blocco 4: zone.json, linee.png, schizzo.png, originale.jpg, colorata.png
 // In più: zone.json originale, colorata.png e thumb.jpg per la galleria.
 import { unzipSync } from 'fflate';
 import { upload } from './supabase';
@@ -51,8 +52,13 @@ export async function parseStudioZip(file: File): Promise<ParsedPackage> {
     'thumb.jpg': await thumbnail(colored, 480),
   };
   if (sketch) out['outline.png'] = sketch;
-  const hi = find(files, 'immagini/schizzo_alta.png'); // sketch ad alta risoluzione (blocco 4 dello Studio)
+  // per il gioco identico al blocco 4 dello Studio (studio/public/app.html in modalità gioco):
+  const hi = find(files, 'immagini/schizzo_alta.png'); // sketch ad alta risoluzione
   if (hi) out['schizzo.png'] = hi;
+  const lin = find(files, 'immagini/linee.png'); // linee originali (grigio = contorni dei pezzi)
+  if (lin) out['linee.png'] = lin;
+  const orig = find(files, 'immagini/originale.jpg'); // "Rivela l'originale"
+  if (orig) out['originale.jpg'] = orig;
   return {
     name: d.nome || file.name.replace(/(_pacchetto)?\.zip$/i, ''),
     width: d.larghezza, height: d.altezza, colors: palette.length, zones: regions.length,

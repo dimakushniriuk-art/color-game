@@ -3,3 +3,5 @@ dist
 .env
 ios/App/App/public
 android/app/src/main/assets/public
+# copiato da studio/public/app.html (scripts/copia-gioco.mjs)
+public/gioco/
