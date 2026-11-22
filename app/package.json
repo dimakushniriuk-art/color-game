@@ -2,6 +2,8 @@
   "name": "color-game-app",
   "version": "0.1.0",
   "scripts": {
+    "predev": "node scripts/copia-gioco.mjs",
+    "prebuild": "node scripts/copia-gioco.mjs",
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
