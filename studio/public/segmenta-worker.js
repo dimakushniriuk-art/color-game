@@ -332,8 +332,63 @@ function segmenta(inp, progress) {
   return { w, h, nReg: comp.n, reg, regColor, palette, counts, pos, fineLab, finePal, nFine: usati.length, kFine: Kf, linea, minArea, minViso };
 }
 
+// qualità di un risultato: differenza media di colore (ΔE) tra l'originale e il colore del suo pezzo
+function errore(rgba, res) {
+  const N = res.w * res.h, pal = res.palette.map(([r, g, b]) => { const R = LUT[r], G = LUT[g], B = LUT[b];
+    const x = fLab((0.4124564 * R + 0.3575761 * G + 0.1804375 * B) / 0.95047), y = fLab(0.2126729 * R + 0.7151522 * G + 0.072175 * B), z = fLab((0.0193339 * R + 0.119192 * G + 0.9503041 * B) / 1.08883);
+    return [116 * y - 16, 500 * (x - y), 200 * (y - z)]; });
+  let tot = 0;
+  for (let i = 0; i < N; i++) {
+    const R = LUT[rgba[i * 4]], G = LUT[rgba[i * 4 + 1]], B = LUT[rgba[i * 4 + 2]];
+    const x = fLab((0.4124564 * R + 0.3575761 * G + 0.1804375 * B) / 0.95047), y = fLab(0.2126729 * R + 0.7151522 * G + 0.072175 * B), z = fLab((0.0193339 * R + 0.119192 * G + 0.9503041 * B) / 1.08883);
+    const c = pal[res.regColor[res.reg[i]]], dl = 116 * y - 16 - c[0], da = 500 * (x - y) - c[1], db = 200 * (y - z) - c[2];
+    tot += Math.sqrt(dl * dl + da * da + db * db);
+  }
+  return tot / N;
+}
+
+// sfocatura leggera (3 passate di media a box): il confronto guarda le forme e i colori, non la grana del dipinto
+function sfoca(rgba, w, h, R) {
+  let a = new Float32Array(w * h * 3); for (let i = 0; i < w * h; i++) { a[i * 3] = rgba[i * 4]; a[i * 3 + 1] = rgba[i * 4 + 1]; a[i * 3 + 2] = rgba[i * 4 + 2]; }
+  for (let pass = 0; pass < 3; pass++) for (const dir of [0, 1]) { const b = new Float32Array(a.length);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s0 = 0, s1 = 0, s2 = 0, n = 0;
+      for (let k = -R; k <= R; k++) { const xx = dir ? x : x + k, yy = dir ? y + k : y; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const j = (yy * w + xx) * 3; s0 += a[j]; s1 += a[j + 1]; s2 += a[j + 2]; n++; }
+      const o = (y * w + x) * 3; b[o] = s0 / n; b[o + 1] = s1 / n; b[o + 2] = s2 / n; }
+    a = b; }
+  const out = new Uint8ClampedArray(w * h * 4); for (let i = 0; i < w * h; i++) { out[i * 4] = a[i * 3]; out[i * 4 + 1] = a[i * 3 + 1]; out[i * 4 + 2] = a[i * 3 + 2]; out[i * 4 + 3] = 255; }
+  return out;
+}
+
+/**
+ * Cerca le impostazioni migliori per questa immagine: prova molte combinazioni (a risoluzione ridotta)
+ * e misura quanto il risultato somiglia all'originale. Restituisce le 3 migliori, diverse tra loro,
+ * con i pezzi, così la pagina può mostrarle (ed eventualmente farle giudicare a Gemini).
+ */
+function autoImpostazioni(inp, P) {
+  const rif = sfoca(inp.rgba, inp.w, inp.h, Math.max(2, Math.round(Math.max(inp.w, inp.h) / 160)));
+  const risultati = [];
+  const prova = (c) => { const res = segmenta(Object.assign({}, inp, c), () => {}); const r = Object.assign({}, c, { errore: errore(rif, res), pezzi: res.nReg, colori: res.nFine, res }); risultati.push(r); return r; };
+  const griglia = []; for (const K of [30, 60, 100, 160, 240]) for (const Kd of [20, 40, 70, 110]) griglia.push({ K, Kd, smooth: 1, seguire: inp.seguire });
+  const tot = griglia.length + 3 + (inp.barriera ? 3 : 0); let n = 0;
+  const passo = (c) => { P(`Provo le impostazioni: ${++n}/${tot}…`, Math.round(3 + 90 * n / tot)); return prova(c); };
+  griglia.forEach(passo);
+  const migliore = () => risultati.reduce((a, b) => (b.errore < a.errore ? b : a));
+  let m = migliore();
+  for (const smooth of [0, 2, 3]) passo({ K: m.K, Kd: m.Kd, smooth, seguire: inp.seguire });
+  m = migliore();
+  if (inp.barriera) for (const seguire of [40, 75, 95]) passo({ K: m.K, Kd: m.Kd, smooth: m.smooth, seguire });
+  const ordinati = risultati.slice().sort((a, b) => a.errore - b.errore), top = [];
+  for (const r of ordinati) { if (top.some((t) => t.K === r.K && t.Kd === r.Kd)) continue; top.push(r); if (top.length === 3) break; }
+  return { top: top.map((r) => ({ K: r.K, Kd: r.Kd, smooth: r.smooth, seguire: r.seguire, errore: r.errore, pezzi: r.pezzi, colori: r.colori, w: r.res.w, h: r.res.h, reg: r.res.reg, regColor: r.res.regColor, palette: r.res.palette })), prove: risultati.length };
+}
+
 if (typeof self !== "undefined" && typeof self.postMessage === "function" && typeof window === "undefined") {
   self.onmessage = (e) => {
+    if (e.data && e.data.tipo === "auto") {
+      try { const t0 = Date.now(); const r = autoImpostazioni(e.data, (msg, pct) => self.postMessage({ tipo: "progresso", msg, pct })); r.ms = Date.now() - t0; self.postMessage({ tipo: "auto", r }, r.top.flatMap((t) => [t.reg.buffer, t.regColor.buffer])); }
+      catch (err) { self.postMessage({ tipo: "errore", msg: String((err && err.message) || err) }); }
+      return;
+    }
     try {
       const t0 = Date.now();
       const res = segmenta(e.data, (msg, pct) => self.postMessage({ tipo: "progresso", msg, pct }));
@@ -342,4 +397,4 @@ if (typeof self !== "undefined" && typeof self.postMessage === "function" && typ
     } catch (err) { self.postMessage({ tipo: "errore", msg: String((err && err.message) || err) }); }
   };
 }
-if (typeof module !== "undefined") module.exports = { segmenta };
+if (typeof module !== "undefined") module.exports = { segmenta, autoImpostazioni, errore };

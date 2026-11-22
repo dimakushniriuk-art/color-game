@@ -61,6 +61,21 @@
   .galleria img{width:100%;height:130px;object-fit:contain;background:#faf7f0;cursor:pointer} .galleria .azioni button{padding:3px 7px;font-size:11px}
   .col small{color:var(--tenue);font-size:10px;display:block;line-height:1.1}
   .regola{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+  .segbar{display:flex;flex-wrap:wrap;gap:6px}
+  .segbar #btnAutoSeg{flex:1 1 220px;font-weight:600}
+  .seginfo{font-family:system-ui,sans-serif;font-size:12px;color:var(--tenue);background:#faf6ee;border:1px solid var(--linea);border-radius:7px;padding:5px 9px;font-variant-numeric:tabular-nums}
+  .pannelli{display:flex;flex-direction:column;gap:8px}
+  .pannello{border:1px solid var(--linea);border-radius:9px;padding:6px 10px 9px;margin:0;display:flex;flex-direction:column;gap:5px}
+  .pannello legend{font-family:system-ui,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--inchiostro);padding:0 4px}
+  .pannello legend small{text-transform:none;letter-spacing:0;color:var(--tenue);margin-left:4px}
+  .cursore{display:grid;grid-template-columns:132px 1fr 64px 14px;align-items:center;gap:8px;font-family:system-ui,sans-serif;font-size:12.5px}
+  .cursore label{color:var(--inchiostro)}
+  .cursore select{grid-column:2 / span 3}
+  .cursore input[type=range]{width:100%;accent-color:var(--accento)}
+  .cursore .num{width:64px;padding:3px 5px;border:1px solid var(--linea);border-radius:6px;font:inherit;font-variant-numeric:tabular-nums;text-align:right;background:#fff}
+  .cursore .num:focus{outline:2px solid var(--accento2);outline-offset:0}
+  .cursore .unita{color:var(--tenue);font-size:11px}
+  .azioni.piccole button{padding:3px 9px;font-size:12px}
   #log{margin-top:16px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;color:var(--tenue);max-height:170px;overflow:auto;border-top:1px solid var(--linea);padding-top:8px}
   .ok{color:var(--ok)} .err{color:var(--err)}
   .legenda{margin-top:16px;background:var(--card);border:1px solid var(--linea);border-radius:10px;padding:12px}
@@ -130,27 +145,37 @@
     <section class="card">
       <h2>3 <small>Segmentazione e colori</small><em>calcolo locale</em></h2>
       <div class="tela" id="telaSeg"><div class="vuoto" id="vuotoSeg">Si calcola dopo lo sketch (passo 2): l'originale diviso in pezzi col colore prevalente, con lo sketch sopra</div><div class="carica"><div class="spin"></div><span id="caricaSeg">Segmentazione…</span></div></div>
-      <div class="regola">
-        <label class="campo">Colori<span class="riga"><input type="range" id="segK" min="2" max="500" value="120"><output id="segKOut"></output></span></label>
-        <label class="campo">Dettaglio dei pezzi<span class="riga"><input type="range" id="segKd" min="2" max="120" value="60"><output id="segKdOut"></output></span></label>
-        <label class="campo">Pezzo minimo (% dell'immagine)<span class="riga"><input type="range" id="segMinPct" min="0.02" max="0.5" step="0.01" value="0.07"><output id="segMinPctOut"></output></span></label>
-        <label class="campo">Pezzo minimo nel viso (%)<span class="riga"><input type="range" id="segMinViso" min="0.005" max="0.07" step="0.005" value="0.02"><output id="segMinVisoOut"></output></span></label>
-        <label class="campo">Morbidezza<span class="riga"><input type="range" id="segSmooth" min="0" max="4" value="1"><output id="segSmoothOut"></output></span></label>
-        <label class="campo">Segui lo sketch<span class="riga"><input type="range" id="segSegui" min="0" max="100" value="60"><output id="segSeguiOut"></output></span></label>
-        <label class="campo">Vista
-          <select id="segVista"><option value="pezzi">Pezzi col colore prevalente</option><option value="fine">Pixel col colore prevalente (più fine)</option></select></label>
-        <label class="campo">Realismo (luci e ombre dentro i pezzi)<span class="riga"><input type="range" id="segReal" min="0" max="100" value="65"><output id="segRealOut"></output></span></label>
-        <label class="check"><input type="checkbox" id="segSketchSopra" checked> Sketch sovrapposto</label>
-        <label class="check"><input type="checkbox" id="segBordi"> Contorni dei pezzi</label>
-        <label class="check"><input type="checkbox" id="segSpessore" checked> Niente strisce sottili (spessore minimo)</label>
+      <div class="segbar">
+        <button class="principale" id="btnAutoSeg" title="Prova molte combinazioni sull'immagine e sceglie le impostazioni più fedeli (con la password, Gemini sceglie tra le 3 migliori)">⚡ Impostazioni migliori (auto)</button>
+        <button class="sec" id="btnPerfeziona" title="Gemini guarda il risultato e suggerisce correzioni (i colori restano quelli reali)">✨ Consiglio di Gemini</button>
+        <button class="sec" id="btnConsigliati" title="Riporta i cursori a valori equilibrati e fedeli">↺ Valori consigliati</button>
       </div>
-      <div class="azioni">
-        <button class="principale" id="btnSegLoc" disabled>Segmenta l'originale</button>
-        <button class="sec" id="btnSegnaViso" title="Trascina un rettangolo sul viso: lì i pezzi possono essere più piccoli">Segna il viso</button>
-        <button class="sec" id="btnTrovaViso" title="Gemini trova i visi nell'opera">Trova il viso (Gemini)</button>
-        <button class="sec" id="btnTogliViso">Togli zone viso</button>
-        <button class="sec" id="btnConsigliati" title="Riporta i cursori a valori equilibrati e fedeli">Valori consigliati</button>
-        <button class="principale" id="btnPerfeziona" style="background:var(--accento2);border-color:var(--accento2)" title="Gemini sceglie le impostazioni migliori (i colori restano quelli reali)">✨ Perfeziona con Gemini</button>
+      <div class="seginfo" id="segInfo">—</div>
+      <div class="pannelli">
+        <fieldset class="pannello"><legend>Pezzi <small>si aggiorna mentre muovi</small></legend>
+          <div class="cursore" title="Quanti colori reali può usare il disegno"><label for="segK">Colori</label><input type="range" id="segK" min="2" max="500" step="1" value="120"><input type="number" class="num" data-per="segK" min="2" max="500" step="1" value="120"><span class="unita"></span><output id="segKOut" hidden></output></div>
+          <div class="cursore" title="Più alto = forme più articolate"><label for="segKd">Dettaglio delle forme</label><input type="range" id="segKd" min="2" max="120" step="1" value="60"><input type="number" class="num" data-per="segKd" min="2" max="120" step="1" value="60"><span class="unita"></span><output id="segKdOut" hidden></output></div>
+          <div class="cursore" title="Nessun pezzo più piccolo di questa % dell'immagine"><label for="segMinPct">Pezzo minimo</label><input type="range" id="segMinPct" min="0.02" max="0.5" step="0.01" value="0.07"><input type="number" class="num" data-per="segMinPct" min="0.02" max="0.5" step="0.01" value="0.07"><span class="unita">%</span><output id="segMinPctOut" hidden></output></div>
+          <div class="cursore" title="Ammorbidisce le sfumature prima di dividere"><label for="segSmooth">Morbidezza</label><input type="range" id="segSmooth" min="0" max="4" step="1" value="1"><input type="number" class="num" data-per="segSmooth" min="0" max="4" step="1" value="1"><span class="unita"></span><output id="segSmoothOut" hidden></output></div>
+          <div class="cursore" title="Quante linee dello sketch diventano confini (anche le più corte con valori alti)"><label for="segSegui">Segui lo sketch</label><input type="range" id="segSegui" min="0" max="100" step="1" value="60"><input type="number" class="num" data-per="segSegui" min="0" max="100" step="1" value="60"><span class="unita"></span><output id="segSeguiOut" hidden></output></div>
+          <label class="check"><input type="checkbox" id="segSpessore" checked> Niente strisce sottili (spessore minimo)</label>
+        </fieldset>
+        <fieldset class="pannello"><legend>Viso <small>pezzi più piccoli ammessi</small></legend>
+          <div class="cursore" title="Nelle zone viso i pezzi possono scendere fino a questa %"><label for="segMinViso">Pezzo minimo nel viso</label><input type="range" id="segMinViso" min="0.005" max="0.07" step="0.005" value="0.02"><input type="number" class="num" data-per="segMinViso" min="0.005" max="0.07" step="0.005" value="0.02"><span class="unita">%</span><output id="segMinVisoOut" hidden></output></div>
+          <div class="azioni">
+            <button class="sec" id="btnTrovaViso" title="Gemini trova i visi nell'opera">🔍 Trova il viso (Gemini)</button>
+            <button class="sec" id="btnSegnaViso" title="Trascina un rettangolo sul viso nel riquadro qui sopra">▭ Segna a mano</button>
+            <button class="sec" id="btnTogliViso">✕ Togli</button>
+          </div>
+        </fieldset>
+        <fieldset class="pannello"><legend>Vista <small>solo come si vede, istantaneo</small></legend>
+          <div class="cursore"><label for="segVista">Mostra</label><select id="segVista"><option value="pezzi">Pezzi col colore prevalente</option><option value="fine">Pixel col colore prevalente (più fine)</option></select></div>
+          <div class="cursore" title="Solo anteprima: mostra la luce dell'originale dentro i pezzi"><label for="segReal">Realismo (luci e ombre)</label><input type="range" id="segReal" min="0" max="100" step="1" value="65"><input type="number" class="num" data-per="segReal" min="0" max="100" step="1" value="65"><span class="unita">%</span><output id="segRealOut" hidden></output></div>
+          <div class="azioni"><label class="check"><input type="checkbox" id="segSketchSopra" checked> Sketch</label><label class="check"><input type="checkbox" id="segBordi"> Contorni dei pezzi</label></div>
+        </fieldset>
+      </div>
+      <div class="azioni piccole">
+        <button class="sec" id="btnSegLoc" disabled>Ricalcola</button>
         <input type="file" id="fileSeg" accept="image/*" hidden>
         <button class="sec" id="btnCaricaSeg">Carica…</button>
         <button class="sec" id="dlSeg" disabled>Scarica</button>
@@ -315,7 +340,7 @@ function aJpegB64(cv, maxLato = 1600) { const s = Math.min(1, maxLato / Math.max
 function aggiorna() {
   const occ = document.querySelector(".tela.lavoro") !== null;
   $("btnSketch").disabled = !st.base || occ;
-  $("btnSeg").disabled = !st.base || occ; $("btnSegLoc").disabled = !st.base || occ; $("btnPerfeziona").disabled = !st.base || !st.segRes || occ;
+  $("btnSeg").disabled = !st.base || occ; $("btnSegLoc").disabled = !st.base || occ; $("btnAutoSeg").disabled = !st.base || occ; $("btnPerfeziona").disabled = !st.base || !st.segRes || occ;
   $("btnColori").disabled = !st.base || !st.sketch || occ;
   $("btnColGemini").disabled = !st.base || !st.sketch || occ;
   $("dlSketch").disabled = !st.sketch; $("dlSeg").disabled = !st.seg;
@@ -436,10 +461,10 @@ $("btnSeg").onclick = () => {
   passoGemini("telaSeg", "seg", $("p2").value + (usa ? P2_GUIDA : ""), imgs, "Segmentata");
 };
 // ---------- passo 2: segmentazione locale dell'originale (nessun colore cambiato) ----------
-function segmentaLocale() { return new Promise((fine) => {
-  if (!st.base) return fine(false); if (st.wkSeg) st.wkSeg.terminate();
-  const k = Math.min(1, 1200 / Math.max(st.base.width, st.base.height)), w = Math.round(st.base.width * k), h = Math.round(st.base.height * k);
-  const rgba = canvasDa(st.base, w, h).getContext("2d").getImageData(0, 0, w, h).data; st.segPix = new Uint8ClampedArray(rgba);
+// immagine e linee dello sketch alla risoluzione di lavoro (lato lungo = maxLato)
+function inputSegmentazione(maxLato) {
+  const k = Math.min(1, maxLato / Math.max(st.base.width, st.base.height)), w = Math.round(st.base.width * k), h = Math.round(st.base.height * k);
+  const rgba = canvasDa(st.base, w, h).getContext("2d").getImageData(0, 0, w, h).data;
   // linee dello sketch riportate nel formato dell'originale: diventano confini per i pezzi
   let barriera = null; const seguire = Number($("segSegui").value);
   const metti = (img, sc, dxp, dyp, soglia) => { const SW = img.width, SH = img.height, ox = (SW - SW * sc) / 2 + dxp * SW, oy = (SH - SH * sc) / 2 + dyp * SH;
@@ -453,13 +478,30 @@ function segmentaLocale() { return new Promise((fine) => {
     const d = g.getImageData(0, 0, w, h).data; barriera = barriera || new Uint8Array(w * h);
     for (let i = 0; i < w * h; i++) if (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2] < 170) barriera[i] = 1;
   }
-  lavoro("telaSeg", true); const wk = new Worker("segmenta-worker.js"); st.wkSeg = wk;
+  return { rgba, w, h, barriera, seguire: barriera ? Math.max(seguire, st.mappaGemini ? 70 : 0) : 0 };
+}
+function parametriSeg() {
+  return { K: Number($("segK").value), Kd: Number($("segKd").value), minPct: Number($("segMinPct").value), minPctViso: Number($("segMinViso").value), visi: st.visi, spessore: $("segSpessore").checked, smooth: Number($("segSmooth").value) };
+}
+// anteprima = calcolo veloce a bassa risoluzione mentre si muovono i cursori; poi parte da sola la versione completa
+let tSegPieno = null;
+function segmentaLocale(opz = {}) { return new Promise((fine) => {
+  if (!st.base) return fine(false); if (st.wkSeg) st.wkSeg.terminate(); clearTimeout(tSegPieno);
+  const anteprima = !!opz.anteprima, inp = inputSegmentazione(anteprima ? 560 : 1200);
+  const pix = new Uint8ClampedArray(inp.rgba);
+  lavoro("telaSeg", !anteprima); $("segInfo").textContent = anteprima ? "Anteprima…" : "Calcolo…";
+  const wk = new Worker("segmenta-worker.js"); st.wkSeg = wk;
   wk.onmessage = (e) => { const m = e.data; if (m.tipo === "progresso") { $("caricaSeg").textContent = m.msg; return; }
     wk.terminate(); st.wkSeg = null; lavoro("telaSeg", false);
-    if (m.tipo === "errore") { log("Segmentazione — errore: " + m.msg, "err"); return fine(false); }
-    st.segRes = m.res; disegnaSeg(); if ($("zone4").value === "seg") aggiornaColora(); log(`Segmentata: ${m.res.nReg.toLocaleString("it")} pezzi, ${m.res.kFine} colori reali, pezzo minimo ${m.res.minArea} px (${$("segMinPct").value}%)${st.visi.length ? `, nel viso ${m.res.minViso} px` : ""} (${(m.res.ms / 1000).toFixed(1)} s).`, "ok");
+    if (m.tipo === "errore") { log("Segmentazione — errore: " + m.msg, "err"); $("segInfo").textContent = "Errore"; return fine(false); }
+    st.segPix = pix; st.segRes = m.res; st.segAnteprima = anteprima; disegnaSeg();
+    const r = m.res, info = `${r.nReg.toLocaleString("it")} pezzi · ${r.nFine} colori usati · pezzo minimo ${r.minArea} px${st.visi.length ? ` (viso ${r.minViso} px)` : ""} · ${(r.ms / 1000).toFixed(1)} s`;
+    $("segInfo").textContent = anteprima ? info + " · anteprima, rifinisco…" : info;
+    if (anteprima) { tSegPieno = setTimeout(() => segmentaLocale(), 700); return fine(true); }
+    if ($("zone4").value === "seg") aggiornaColora();
+    log(`Segmentata: ${info}.`, "ok");
     if (st.sketch) rilevaColori(); fine(true); };
-  wk.postMessage({ rgba, w, h, K: Number($("segK").value), Kd: Number($("segKd").value), minPct: Number($("segMinPct").value), minPctViso: Number($("segMinViso").value), visi: st.visi, spessore: $("segSpessore").checked, smooth: Number($("segSmooth").value), barriera, seguire: barriera ? Math.max(seguire, st.mappaGemini ? 70 : 0) : 0 }, barriera ? [rgba.buffer, barriera.buffer] : [rgba.buffer]);
+  wk.postMessage(Object.assign({}, inp, parametriSeg()), inp.barriera ? [inp.rgba.buffer, inp.barriera.buffer] : [inp.rgba.buffer]);
 }); }
 function sketchNelFormato(w, h) { // sketch allineato, riportato nel formato dell'originale
   const SW = st.sketch.width, SH = st.sketch.height, sc = Number($("sc").value) / 100, ox = (SW - SW * sc) / 2 + Number($("dx").value) / 1000 * SW, oy = (SH - SH * sc) / 2 + Number($("dy").value) / 1000 * SH;
@@ -514,7 +556,7 @@ function disegnaSeg() {
 }
 $("btnSegLoc").onclick = segmentaLocale;
 let tSeg = null;
-["segK", "segKd", "segMinPct", "segMinViso", "segSmooth", "segSegui"].forEach((id) => $(id).addEventListener("input", () => { $(id + "Out").textContent = $(id).value; salva(id, $(id).value); clearTimeout(tSeg); tSeg = setTimeout(segmentaLocale, 500); }));
+["segK", "segKd", "segMinPct", "segMinViso", "segSmooth", "segSegui"].forEach((id) => $(id).addEventListener("input", () => { $(id + "Out").textContent = $(id).value; salva(id, $(id).value); clearTimeout(tSeg); tSeg = setTimeout(() => segmentaLocale({ anteprima: true }), 220); }));
 ["segReal", "segSketchSopra"].forEach((id) => $(id).addEventListener("input", () => { if (id === "segReal") { $("segRealOut").textContent = $("segReal").value; salva("segReal", $("segReal").value); } disegnaSeg(); }));
 { const v = leggi("segReal"); if (v) $("segReal").value = v; $("segRealOut").textContent = $("segReal").value; const a = leggi("autoSketch"); if (a !== null) $("autoSketch").checked = a === "true"; }
 $("autoSketch").addEventListener("change", () => salva("autoSketch", $("autoSketch").checked));
@@ -555,6 +597,55 @@ $("btnTrovaViso").onclick = async () => {
     await segmentaLocale();
   } catch (e) { $("statoPerf").innerHTML = '<span class="err">✕ ' + e.message.replace(/</g, "&lt;").slice(0, 200) + "</span>"; }
   finally { btn.disabled = false; }
+};
+// ---------- cursori + caselle numeriche: si può trascinare o scrivere il valore ----------
+function sincronizzaNumeri() { document.querySelectorAll(".num[data-per]").forEach((n) => { const r = $(n.dataset.per); if (r && document.activeElement !== n) n.value = r.value; }); }
+document.querySelectorAll(".num[data-per]").forEach((n) => {
+  const r = $(n.dataset.per);
+  r.addEventListener("input", () => { if (document.activeElement !== n) n.value = r.value; });
+  const applica = () => { if (n.value === "") return; let v = Number(n.value); if (isNaN(v)) return; v = Math.min(Number(r.max), Math.max(Number(r.min), v)); if (String(v) === r.value) return; r.value = v; r.dispatchEvent(new Event("input")); };
+  n.addEventListener("input", applica);
+  n.addEventListener("change", () => { applica(); n.value = r.value; });
+  n.addEventListener("keydown", (e) => { if (e.key === "Enter") n.blur(); });
+});
+// i valori cambiati dal programma (consigliati, auto, Gemini) aggiornano anche le caselle
+new MutationObserver(sincronizzaNumeri).observe(document.querySelector(".pannelli"), { subtree: true, childList: true, characterData: true });
+
+// ---------- impostazioni migliori in automatico ----------
+const PROMPT_SCEGLI = `Image 1 is the original artwork. Images 2, 3 and 4 are three paint-by-numbers versions (A, B, C) of it: every piece is filled with one real color of the original, black lines are the sketch. Choose the version that is most faithful to the original (face features, eyes, lips, hair shapes, light and shadow) while having clean, well-shaped pieces that are pleasant to color on a phone. Answer ONLY with JSON: {"best":"A","reason":"one short sentence in Italian"} where best is A, B or C.`;
+function anteprimaCandidato(t) {
+  const c = document.createElement("canvas"); c.width = t.w; c.height = t.h; const g = c.getContext("2d"), id = g.createImageData(t.w, t.h);
+  for (let i = 0; i < t.w * t.h; i++) { const col = t.palette[t.regColor[t.reg[i]]]; id.data[i * 4] = col[0]; id.data[i * 4 + 1] = col[1]; id.data[i * 4 + 2] = col[2]; id.data[i * 4 + 3] = 255; }
+  g.putImageData(id, 0, 0);
+  if (st.sketch) { g.globalCompositeOperation = "multiply"; g.drawImage(sketchNelFormato(t.w, t.h), 0, 0); g.globalCompositeOperation = "source-over"; }
+  return c;
+}
+$("btnAutoSeg").onclick = async () => {
+  if (!st.base) return log("Prima carica l'opera.", "err");
+  const btn = $("btnAutoSeg"); btn.disabled = true; if (st.wkSeg) { st.wkSeg.terminate(); st.wkSeg = null; } clearTimeout(tSegPieno);
+  lavoro("telaSeg", true); $("caricaSeg").textContent = "Cerco le impostazioni migliori…"; $("statoPerf").textContent = "";
+  try {
+    const inp = inputSegmentazione(480);
+    const r = await new Promise((ok, ko) => { const wk = new Worker("segmenta-worker.js");
+      wk.onmessage = (e) => { const m = e.data; if (m.tipo === "progresso") { $("caricaSeg").textContent = m.msg; return; } wk.terminate(); m.tipo === "auto" ? ok(m.r) : ko(new Error(m.msg)); };
+      wk.onerror = (e) => { wk.terminate(); ko(new Error(e.message)); };
+      wk.postMessage(Object.assign({ tipo: "auto" }, inp, parametriSeg())); });
+    let scelta = r.top[0], motivo = "la più fedele all'originale tra " + r.prove + " prove";
+    if ($("pw").value && r.top.length > 1) {
+      $("caricaSeg").textContent = "Gemini confronta le 3 migliori…";
+      try {
+        const j = await chiamaGeminiTesto(PROMPT_SCEGLI, [aJpegB64(st.base, 768), ...r.top.map((t) => aJpegB64(anteprimaCandidato(t), 768))]);
+        const k = "ABC".indexOf(String(j.best || "").trim().toUpperCase().charAt(0));
+        if (k >= 0 && r.top[k]) { scelta = r.top[k]; motivo = "scelta da Gemini tra le 3 più fedeli" + (j.reason ? ": " + j.reason : ""); }
+      } catch (e) { log("Gemini non ha risposto, uso la misura di fedeltà: " + e.message, "err"); }
+    }
+    const metti = (id, v) => { $(id).value = v; $(id + "Out").textContent = $(id).value; salva(id, $(id).value); };
+    metti("segK", scelta.K); metti("segKd", scelta.Kd); metti("segSmooth", scelta.smooth); if (st.sketch) metti("segSegui", scelta.seguire);
+    $("statoPerf").textContent = `⚡ Colori ${scelta.K}, dettaglio ${scelta.Kd}, morbidezza ${scelta.smooth}${st.sketch ? `, segui sketch ${scelta.seguire}` : ""} — ${motivo} (${(r.ms / 1000).toFixed(0)} s).`;
+    log("Impostazioni automatiche: " + $("statoPerf").textContent.slice(2), "ok");
+  } catch (e) { log("Impostazioni automatiche — errore: " + e.message, "err"); }
+  finally { lavoro("telaSeg", false); btn.disabled = false; }
+  await segmentaLocale();
 };
 const CONSIGLIATI = { segK: 120, segKd: 60, segMinPct: 0.07, segMinViso: 0.02, segSmooth: 1, segSegui: 60 };
 $("btnConsigliati").onclick = () => { for (const [k, v] of Object.entries(CONSIGLIATI)) { $(k).value = v; $(k + "Out").textContent = v; salva(k, v); } $("statoPerf").textContent = "Valori consigliati ripristinati."; segmentaLocale(); };
