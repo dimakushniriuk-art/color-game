@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "echo \"dipendenze installate da scripts/build-site.mjs\"",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "redirects": [
+    { "source": "/admin", "destination": "/admin/", "permanent": false },
+    { "source": "/studio", "destination": "/studio/", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/proxy?__path=:path*" }
+  ]
+}

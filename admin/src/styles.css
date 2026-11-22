@@ -82,6 +82,12 @@ label.check input { width: auto; }
 .empty { text-align: center; padding: 50px 20px; border: 2px dashed var(--linea); border-radius: 12px; color: var(--tenue); }
 .empty h3 { color: var(--inchiostro); }
 
+.inbox { margin-bottom: 18px; border-color: #cfdcd3; background: #f3f8f4; }
+.inbox h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.inbox ul { list-style: none; padding: 0; margin: 10px 0 0; }
+.inbox li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid #dde8df; flex-wrap: wrap; }
+.inbox li > span { flex: 1; }
+
 /* scheda stile wiki */
 .crumbs { font-size: 13px; color: var(--tenue); margin-bottom: 10px; }
 .wiki-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 1px solid var(--linea); padding-bottom: 6px; }

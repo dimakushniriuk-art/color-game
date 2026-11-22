@@ -19,9 +19,36 @@ function json(obj, status = 200) {
   });
 }
 
-function autorizzato(req, env) {
-  if (!env.APP_PASSWORD) return true; // nessuna password impostata
-  return req.headers.get("x-app-password") === env.APP_PASSWORD;
+// Accesso: login del team (token Supabase, lo stesso dell'admin) oppure, come riserva, APP_PASSWORD.
+// Senza nessuno dei due l'API resta chiusa, tranne se OPEN_ACCESS=1 (solo per prove in locale).
+const SUPABASE_URL_DEF = "https://vcvboeioopplfqhqpqvf.supabase.co";
+const SUPABASE_KEY_DEF = "sb_publishable_dcPyb3gwCap83RYt-mcWig__ypgYX5S";
+const TOKEN_OK = new Map(); // token -> scadenza della verifica (ms)
+
+async function membroDelTeam(token, env) {
+  const t = TOKEN_OK.get(token);
+  if (t && t > Date.now()) return true;
+  try {
+    const r = await fetch(`${env.SUPABASE_URL || SUPABASE_URL_DEF}/rest/v1/rpc/am_i_team_member`, {
+      method: "POST",
+      headers: { apikey: env.SUPABASE_ANON_KEY || SUPABASE_KEY_DEF, authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: "{}",
+    });
+    const ok = r.ok && (await r.json()) === true;
+    if (ok) {
+      TOKEN_OK.set(token, Date.now() + 5 * 60 * 1000);
+      if (TOKEN_OK.size > 200) TOKEN_OK.delete(TOKEN_OK.keys().next().value);
+    }
+    return ok;
+  } catch (e) { return false; }
+}
+
+async function autorizzato(req, env) {
+  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (bearer && (await membroDelTeam(bearer, env))) return true;
+  const pw = req.headers.get("x-app-password");
+  if (env.APP_PASSWORD && pw && pw === env.APP_PASSWORD) return true;
+  return !env.APP_PASSWORD && env.OPEN_ACCESS === "1";
 }
 
 
@@ -35,13 +62,13 @@ export default {
     const url = new URL(req.url);
 
     if (url.pathname === "/api/check") {
-      if (!autorizzato(req, env)) return json({ ok: false, error: "Password errata" }, 401);
+      if (!(await autorizzato(req, env))) return json({ ok: false, error: "Accesso non autorizzato: entra con l'account del team" }, 401);
       return json({ ok: true, chiave: Boolean(env.GEMINI_API_KEY) });
     }
 
     if (url.pathname === "/api/gemini") {
       if (req.method !== "POST") return json({ error: "Usa POST" }, 405);
-      if (!autorizzato(req, env)) return json({ error: "Password errata" }, 401);
+      if (!(await autorizzato(req, env))) return json({ error: "Accesso non autorizzato: entra con l'account del team" }, 401);
       if (!env.GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY non configurata sul server" }, 500);
 
       const model = url.searchParams.get("model") || "";
@@ -70,7 +97,7 @@ export default {
 
     if (url.pathname === "/api/condividi") {
       if (req.method !== "POST") return json({ error: "Usa POST" }, 405);
-      if (!autorizzato(req, env)) return json({ error: "Password errata" }, 401);
+      if (!(await autorizzato(req, env))) return json({ error: "Accesso non autorizzato: entra con l'account del team" }, 401);
       const corpo = await req.arrayBuffer();
       if (corpo.byteLength > MAX_BYTES) return json({ error: "Disegno troppo grande" }, 413);
       const id = idCasuale(), nome = decodeURIComponent(req.headers.get("x-nome") || "Disegno").slice(0, 120);

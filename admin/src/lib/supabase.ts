@@ -5,10 +5,13 @@ import { createClient } from '@supabase/supabase-js';
 const env = import.meta.env;
 export const SUPABASE_URL: string = env.VITE_SUPABASE_URL || 'https://vcvboeioopplfqhqpqvf.supabase.co';
 const SUPABASE_KEY: string = env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_dcPyb3gwCap83RYt-mcWig__ypgYX5S';
-export const STUDIO_URL: string = env.VITE_STUDIO_URL || 'https://color-game-studio.vercel.app';
-export const APP_URL: string = env.VITE_APP_URL || 'https://color-game-app-nine.vercel.app';
+export const STUDIO_URL: string = env.VITE_STUDIO_URL || '/studio/';
+export const APP_URL: string = env.VITE_APP_URL || '/';
 
 export const BUCKET = 'artworks';
+/** Bucket privato del team: lo Studio mette qui (inbox/) i pacchetti inviati all'admin. */
+export const INBOX_BUCKET = 'coloring';
+export const INBOX_DIR = 'inbox';
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export function publicUrl(path: string | null | undefined): string | null {
