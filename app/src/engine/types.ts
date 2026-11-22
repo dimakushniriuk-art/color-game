@@ -49,4 +49,8 @@ export interface CatalogItem {
   baseUrl?: string;
   thumbnailUrl?: string;
   isNew?: boolean;
+  /** scheda dell'opera (dal pannello admin) */
+  artist?: string;
+  year?: string;
+  description?: string;
 }
