@@ -8,6 +8,7 @@ import { IconReplay, IconShare } from '../components/Icons';
 import { lastCompletion } from '../state/session';
 import { levelInfo, usePlayer, type Reward } from '../state/rewards';
 import { useAnimatedNumber } from '../components/Wallet';
+import { loadStudioView, paintStudio, type StudioView } from '../data/studioView';
 
 function RewardSummary({ reward, levelBefore }: { reward: Reward; levelBefore: number }) {
   const p = usePlayer();
@@ -32,7 +33,11 @@ function RewardSummary({ reward, levelBefore }: { reward: Reward; levelBefore: n
 
 const REPLAY_MS = 4500;
 
-export function Complete({ item, next, onGallery, onNext }: { item: CatalogItem; next: CatalogItem | null; onGallery(): void; onNext(): void }) {
+export function Complete(props: { item: CatalogItem; next: CatalogItem | null; onGallery(): void; onNext(): void }) {
+  return props.item.source === 'remote' && props.item.baseUrl ? <CompleteStudio {...props} /> : <CompleteDemo {...props} />;
+}
+
+function CompleteDemo({ item, next, onGallery, onNext }: { item: CatalogItem; next: CatalogItem | null; onGallery(): void; onNext(): void }) {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -88,30 +93,81 @@ export function Complete({ item, next, onGallery, onNext }: { item: CatalogItem;
   const share = async () => {
     cancelAnimationFrame(raf.current);
     showFinal();
-    const cv = canvasRef.current!;
-    const name = `color-game-${item.id}.png`;
-    try {
-      if (Capacitor.isNativePlatform()) {
-        const { Filesystem, Directory } = await import('@capacitor/filesystem');
-        const { Share } = await import('@capacitor/share');
-        const data = cv.toDataURL('image/png').split(',')[1];
-        const f = await Filesystem.writeFile({ path: name, data, directory: Directory.Cache });
-        await Share.share({ title: item.title, files: [f.uri] });
-        return;
-      }
-      const blob: Blob = await new Promise((res) => cv.toBlob((b) => res(b!), 'image/png'));
-      const file = new File([blob], name, { type: 'image/png' });
-      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: item.title }); return; }
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = name; a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-      setMsg('Immagine salvata');
-    } catch (e: any) {
-      if (e?.name !== 'AbortError') setMsg('Condivisione non riuscita');
-    }
-    setTimeout(() => setMsg(null), 2200);
+    await shareCanvas(canvasRef.current!, item, setMsg);
   };
 
+  return <CompleteLayout {...{ item, next, onGallery, onNext, summary, msg, canvasRef }} ready={!!puzzle} replay={replay} share={share} />;
+}
+
+/** Opere vere: rivedi e salva come nel blocco 4 dello Studio (sketch + pezzi dell'originale). */
+function CompleteStudio({ item, next, onGallery, onNext }: { item: CatalogItem; next: CatalogItem | null; onGallery(): void; onNext(): void }) {
+  const [view, setView] = useState<StudioView | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const raf = useRef(0);
+  const [summary] = useState(() => (lastCompletion.id === item.id && lastCompletion.reward ? { reward: lastCompletion.reward, levelBefore: lastCompletion.levelBefore } : null));
+  useEffect(() => () => { if (lastCompletion.id === item.id) lastCompletion.id = null; }, [item.id]);
+  useEffect(() => { loadStudioView(item.baseUrl!, 1200).then(setView).catch(() => setMsg('Anteprima non disponibile')); }, [item]);
+
+  const ctx = () => canvasRef.current!.getContext('2d')!;
+  const showFinal = () => { if (view) paintStudio(view, null, ctx()); };
+  const replay = () => {
+    if (!view) return;
+    cancelAnimationFrame(raf.current);
+    const order = getProgress(item.id)?.order ?? [];
+    const filled = new Set<number>();
+    paintStudio(view, filled, ctx());
+    const t0 = performance.now();
+    let i = 0;
+    const step = (now: number) => {
+      const target = Math.min(order.length, Math.ceil(((now - t0) / REPLAY_MS) * order.length));
+      for (; i < target; i++) filled.add(order[i]);
+      paintStudio(view, filled, ctx());
+      if (i < order.length) raf.current = requestAnimationFrame(step);
+      else setTimeout(showFinal, 300);
+    };
+    raf.current = requestAnimationFrame(step);
+  };
+  useEffect(() => {
+    if (!view) return;
+    const cv = canvasRef.current!; cv.width = view.w; cv.height = view.h;
+    replay();
+    return () => cancelAnimationFrame(raf.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+  const share = async () => { cancelAnimationFrame(raf.current); showFinal(); await shareCanvas(canvasRef.current!, item, setMsg); };
+
+  return <CompleteLayout {...{ item, next, onGallery, onNext, summary, msg, canvasRef }} ready={!!view} replay={replay} share={share} />;
+}
+
+async function shareCanvas(cv: HTMLCanvasElement, item: CatalogItem, setMsg: (m: string | null) => void) {
+  const name = `color-game-${item.id}.png`;
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem');
+      const { Share } = await import('@capacitor/share');
+      const data = cv.toDataURL('image/png').split(',')[1];
+      const f = await Filesystem.writeFile({ path: name, data, directory: Directory.Cache });
+      await Share.share({ title: item.title, files: [f.uri] });
+      return;
+    }
+    const blob: Blob = await new Promise((res) => cv.toBlob((b) => res(b!), 'image/png'));
+    const file = new File([blob], name, { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: item.title }); return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    setMsg('Immagine salvata');
+  } catch (e: any) {
+    if (e?.name !== 'AbortError') setMsg('Condivisione non riuscita');
+  }
+  setTimeout(() => setMsg(null), 2200);
+}
+
+function CompleteLayout({ item, next, onGallery, onNext, summary, msg, canvasRef, ready, replay, share }: {
+  item: CatalogItem; next: CatalogItem | null; onGallery(): void; onNext(): void; summary: { reward: Reward; levelBefore: number } | null;
+  msg: string | null; canvasRef: React.RefObject<HTMLCanvasElement>; ready: boolean; replay(): void; share(): void;
+}) {
   return (
     <div className="complete">
       <div className="confetti" aria-hidden>{Array.from({ length: 40 }, (_, i) => <i key={i} style={{ ['--i' as any]: i, ['--x' as any]: `${(i * 37) % 100}%`, ['--d' as any]: `${(i % 7) * 0.12}s` }} />)}</div>
@@ -120,8 +176,8 @@ export function Complete({ item, next, onGallery, onNext }: { item: CatalogItem;
       <div className="complete-frame"><canvas ref={canvasRef} /></div>
       {summary && <RewardSummary reward={summary.reward} levelBefore={summary.levelBefore} />}
       <div className="complete-actions">
-        <button className="btn btn-ghost" onClick={replay} disabled={!puzzle}><IconReplay size={18} /> Rivedi</button>
-        <button className="btn btn-ghost" onClick={share} disabled={!puzzle}><IconShare size={18} /> Salva</button>
+        <button className="btn btn-ghost" onClick={replay} disabled={!ready}><IconReplay size={18} /> Rivedi</button>
+        <button className="btn btn-ghost" onClick={share} disabled={!ready}><IconShare size={18} /> Salva</button>
       </div>
       <div className="complete-actions">
         {next && <button className="btn btn-primary wide" onClick={onNext}>Prossimo disegno</button>}

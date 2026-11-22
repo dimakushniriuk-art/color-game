@@ -3,6 +3,7 @@ import type { CatalogItem } from '../engine/types';
 import { loadPuzzle } from '../data/catalog';
 import { renderThumbnail } from '../engine/renderer';
 import { getProgress } from '../state/store';
+import { studioThumbnail } from '../data/studioView';
 
 // Thumbnails are generated one at a time so the UI stays responsive.
 const memo = new Map<string, string>();
@@ -13,6 +14,12 @@ function thumbFor(item: CatalogItem, filledCount: number, complete: boolean): Pr
   const hit = memo.get(key);
   if (hit) return Promise.resolve(hit);
   const job = queue.then(async () => {
+    if (item.source === 'remote' && item.baseUrl) { // come nel blocco 4: sketch + zone fatte con l'originale
+      const pr = getProgress(item.id);
+      const url = await studioThumbnail(item.baseUrl, pr?.order ?? null, 360, !!pr?.completed);
+      memo.set(key, url);
+      return url;
+    }
     const p = await loadPuzzle(item);
     await new Promise((r) => setTimeout(r, 0));
     const url = renderThumbnail(p, getProgress(item.id)?.order ?? null, 360, complete);
@@ -28,7 +35,6 @@ export function Thumb({ item, filledCount, complete }: { item: CatalogItem; fill
   const [error, setError] = useState(false);
   useEffect(() => {
     let alive = true;
-    if (item.source === 'remote' && item.thumbnailUrl && filledCount === 0) { setUrl(item.thumbnailUrl); return; }
     thumbFor(item, filledCount, complete).then((u) => alive && setUrl(u)).catch(() => alive && setError(true));
     return () => { alive = false; };
   }, [item, filledCount, complete]);
