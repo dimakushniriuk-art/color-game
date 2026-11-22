@@ -70,7 +70,7 @@
   .pannello legend small{text-transform:none;letter-spacing:0;color:var(--tenue);margin-left:4px}
   .cursore{display:grid;grid-template-columns:132px 1fr 64px 14px;align-items:center;gap:8px;font-family:system-ui,sans-serif;font-size:12.5px}
   .cursore label{color:var(--inchiostro)}
-  .cursore select{grid-column:2 / span 3}
+  .cursore select{grid-column:2 / span 3;min-width:0;width:100%}
   .cursore input[type=range]{width:100%;accent-color:var(--accento)}
   .cursore .num{width:64px;padding:3px 5px;border:1px solid var(--linea);border-radius:6px;font:inherit;font-variant-numeric:tabular-nums;text-align:right;background:#fff}
   .cursore .num:focus{outline:2px solid var(--accento2);outline-offset:0}
@@ -96,49 +96,64 @@
 </header>
 
 <main>
-  <div class="barra-imp">
-    <label class="campo">Modello Gemini
-      <select id="modello">
-        <option value="gemini-nano-banana-2.1">Nano Banana 2.1 (consigliato)</option>
-        <option value="gemini-3-pro-image">Nano Banana Pro (più preciso, costa di più)</option>
-        <option value="gemini-3.1-flash-image">Nano Banana 2</option>
-        <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite (economico)</option>
-      </select>
-    </label>
-    <label class="campo">Risoluzione
-      <select id="risoluzione"><option value="1K">1K (economica)</option><option value="2K" selected>2K (stampa A4)</option><option value="4K">4K (costosa)</option></select>
-    </label>
-    <span class="nota" id="infoFormato"></span>
-  </div>
-
   <div class="griglia">
     <!-- 0. ORIGINALE -->
     <section class="card">
       <h2>1 <small>Carica la foto</small></h2>
       <div class="tela" id="telaOrig"><div class="vuoto">Trascina qui l'opera<br>oppure usa il pulsante</div><div id="selezione"></div></div>
-      <div class="azioni">
+      <div class="segbar">
         <input type="file" id="fileOrig" accept="image/*" hidden>
-        <button class="sec" id="btnFile">Scegli immagine…</button>
-        <button class="sec" id="btnRitaglia" disabled>Ritaglia selezione</button>
-        <button class="sec" id="btnAnnullaRit" disabled>Annulla ritaglio</button>
+        <button class="principale" id="btnFile">📂 Scegli immagine…</button>
+        <button class="sec" id="btnAutoCornice" disabled title="Trova da sola la cornice o il bordo uniforme attorno al quadro e lo toglie">⚡ Togli la cornice (auto)</button>
       </div>
-      <div class="nota">Togli la cornice trascinando un rettangolo sul quadro. L'immagine viene adattata al formato Gemini più vicino, così sketch e originale si sovrappongono.</div>
+      <div class="seginfo" id="infoFoto">Nessuna immagine</div>
+      <div class="pannelli">
+        <fieldset class="pannello"><legend>Ritaglio <small>trascina sul quadro o scrivi i valori</small></legend>
+          <div class="cursore" title="Bordo sinistro del ritaglio"><label for="ritX">Da sinistra</label><input type="range" id="ritX" min="0" max="95" step="0.5" value="0"><input type="number" class="num" data-per="ritX" min="0" max="95" step="0.5" value="0"><span class="unita">%</span><output id="ritXOut" hidden></output></div>
+          <div class="cursore" title="Bordo alto del ritaglio"><label for="ritY">Dall'alto</label><input type="range" id="ritY" min="0" max="95" step="0.5" value="0"><input type="number" class="num" data-per="ritY" min="0" max="95" step="0.5" value="0"><span class="unita">%</span><output id="ritYOut" hidden></output></div>
+          <div class="cursore" title="Larghezza del ritaglio"><label for="ritW">Larghezza</label><input type="range" id="ritW" min="5" max="100" step="0.5" value="100"><input type="number" class="num" data-per="ritW" min="5" max="100" step="0.5" value="100"><span class="unita">%</span><output id="ritWOut" hidden></output></div>
+          <div class="cursore" title="Altezza del ritaglio"><label for="ritH">Altezza</label><input type="range" id="ritH" min="5" max="100" step="0.5" value="100"><input type="number" class="num" data-per="ritH" min="5" max="100" step="0.5" value="100"><span class="unita">%</span><output id="ritHOut" hidden></output></div>
+          <div class="azioni">
+            <button class="principale" id="btnRitaglia" disabled>✂ Applica ritaglio</button>
+            <button class="sec" id="btnAnnullaRit" disabled>↺ Immagine intera</button>
+          </div>
+        </fieldset>
+        <fieldset class="pannello"><legend>Formato <small>lo sketch di Gemini esce in questo formato</small></legend>
+          <div class="cursore"><label for="formato">Formato</label><select id="formato"><option value="auto">Automatico (il più vicino)</option><option value="1:1">1:1</option><option value="2:3">2:3</option><option value="3:2">3:2</option><option value="3:4">3:4</option><option value="4:3">4:3</option><option value="4:5">4:5</option><option value="5:4">5:4</option><option value="9:16">9:16</option><option value="16:9">16:9</option><option value="21:9">21:9</option></select></div>
+        </fieldset>
+      </div>
+      <div class="nota">Il ritaglio si vede subito sul quadro; con "Applica" riparte lo sketch (richiesta a Gemini).</div>
     </section>
 
     <!-- 1. SKETCH -->
     <section class="card">
       <h2>2 <small>Sketch con Gemini</small><em>Gemini</em></h2>
-      <div class="tela" id="telaSketch"><div class="vuoto">Qui comparirà lo sketch in bianco e nero</div><div class="carica"><div class="spin"></div>Gemini sta disegnando… (20–60 s)</div></div>
-      <div class="azioni">
-        <button class="principale" id="btnSketch" disabled>Genera sketch</button>
-        <label class="check" title="Appena carichi la foto parte lo sketch, poi la segmentazione"><input type="checkbox" id="autoSketch" checked> automatico</label>
-        <select id="nVarianti" title="Quante varianti generare insieme"><option value="1">1 variante</option><option value="2">2 varianti</option><option value="3">3 varianti</option><option value="4">4 varianti</option></select>
+      <div class="tela" id="telaSketch"><div class="vuoto">Qui comparirà lo sketch in bianco e nero</div><div class="carica"><div class="spin"></div><span id="caricaSketch">Gemini sta disegnando… (20–60 s)</span></div></div>
+      <div class="segbar">
+        <button class="principale" id="btnAutoSketch" disabled title="Genera più varianti e sceglie la migliore (Gemini le confronta con l'originale)">⚡ Sketch migliore (auto)</button>
+        <button class="sec" id="btnSketch" disabled>✎ Genera sketch</button>
+      </div>
+      <div class="seginfo" id="infoSketch">—</div>
+      <div id="varianti" class="varianti"></div>
+      <div class="pannelli">
+        <fieldset class="pannello"><legend>Gemini <small>vale per tutte le richieste a Gemini</small></legend>
+          <div class="cursore"><label for="modello">Modello</label><select id="modello">
+        <option value="gemini-nano-banana-2.1">Nano Banana 2.1 (consigliato)</option>
+        <option value="gemini-3-pro-image">Nano Banana Pro (più preciso, costa di più)</option>
+        <option value="gemini-3.1-flash-image">Nano Banana 2</option>
+        <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite (economico)</option>
+      </select></div>
+          <div class="cursore"><label for="risoluzione">Risoluzione</label><select id="risoluzione"><option value="1K">1K (economica)</option><option value="2K" selected>2K (stampa A4)</option><option value="4K">4K (costosa)</option></select></div>
+          <div class="cursore" title="Quante varianti generare insieme con 'Genera sketch' (l'auto ne fa almeno 3)"><label for="nVarianti">Varianti</label><input type="range" id="nVarianti" min="1" max="4" step="1" value="1"><input type="number" class="num" data-per="nVarianti" min="1" max="4" step="1" value="1"><span class="unita"></span><output id="nVariantiOut" hidden></output></div>
+          <label class="check" title="Appena carichi la foto parte lo sketch, poi la segmentazione"><input type="checkbox" id="autoSketch" checked> Parti da solo dopo la foto</label>
+        </fieldset>
+      </div>
+      <div class="azioni piccole">
         <input type="file" id="fileSketch" accept="image/*" hidden>
         <button class="sec" id="btnCaricaSketch">Carica il mio sketch…</button>
         <button class="sec" id="dlSketch" disabled>Scarica</button>
       </div>
-      <div id="varianti" class="varianti"></div>
-      <details class="prompt"><summary>Prompt 1 — sketch</summary><textarea id="p1"></textarea></details>
+      <details class="prompt"><summary>Prompt 1 — sketch (stile del disegno)</summary><textarea id="p1"></textarea></details>
     </section>
 
     <!-- 2. SEGMENTATA -->
@@ -346,7 +361,7 @@ function aggiorna() {
   $("dlSketch").disabled = !st.sketch; $("dlSeg").disabled = !st.seg;
   ["dlCol", "prCol", "dlNum", "prNum", "prLeg"].forEach((id) => ($(id).disabled = !st.res && !(id === "dlCol" && st.colGemini)));
   $("btnPacchetto").disabled = $("btnApp").disabled = $("dlSvg").disabled = $("dlPdf").disabled = !st.res;
-  $("btnAllinea").disabled = !st.base || !st.sketch; $("btnSalvaGal").disabled = !st.base;
+  $("btnAllinea").disabled = !st.base || !st.sketch; $("btnAutoSketch").disabled = !st.base || occ; $("btnAutoCornice").disabled = !st.img || occ; $("btnSalvaGal").disabled = !st.base;
 }
 
 // ---------- originale, ritaglio e formato Gemini ----------
@@ -370,13 +385,14 @@ function apriOrig(f) {
 // base = immagine (ritagliata) portata esattamente al rapporto Gemini più vicino (ritaglio centrale minimo)
 function preparaBase() {
   const c = st.crop || { x: 0, y: 0, w: st.img.width, h: st.img.height };
-  st.ratio = rapportoVicino(c.w, c.h); const [a, b] = st.ratio.split(":").map(Number); const r = a / b;
+  st.ratio = $("formato").value !== "auto" ? $("formato").value : rapportoVicino(c.w, c.h); const [a, b] = st.ratio.split(":").map(Number); const r = a / b;
   let w = c.w, h = c.h, x = c.x, y = c.y;
   if (w / h > r) { const nw = Math.round(h * r); x += Math.round((w - nw) / 2); w = nw; } else { const nh = Math.round(w / r); y += Math.round((h - nh) / 2); h = nh; }
   const cv = document.createElement("canvas"); cv.width = w; cv.height = h; cv.getContext("2d").drawImage(st.img, x, y, w, h, 0, 0, w, h);
   st.base = cv; const vis = canvasDa(cv); vis.id = "cvOrig"; mostra("telaOrig", vis);
   $("selezione").style.display = "none"; st.sel = null; $("btnRitaglia").disabled = true; $("btnAnnullaRit").disabled = !st.crop;
-  $("infoFormato").textContent = `Formato di lavoro: ${st.ratio} (${w}×${h})`;
+  $("infoFoto").textContent = `${st.nome} · originale ${st.img.width}×${st.img.height} · ${st.crop ? "ritagliata · " : ""}formato ${st.ratio} (${w}×${h})`;
+  impostaRitaglio(null);
   st.seg = null; st.segRes = null; st.mappaGemini = null;
   disegnaOverlay(); aggiorna();
 }
@@ -387,7 +403,7 @@ function preparaBase() {
   tela.addEventListener("pointermove", (e) => { if (!start) return; const p = punto(e), tr = tela.getBoundingClientRect();
     const x = Math.min(start.x, p.x), y = Math.min(start.y, p.y), w = Math.abs(p.x - start.x), h = Math.abs(p.y - start.y), s = $("selezione");
     s.style.display = "block"; s.style.left = (p.r.left - tr.left + x) + "px"; s.style.top = (p.r.top - tr.top + y) + "px"; s.style.width = w + "px"; s.style.height = h + "px";
-    st.sel = { x: x / p.r.width, y: y / p.r.height, w: w / p.r.width, h: h / p.r.height }; });
+    st.sel = { x: x / p.r.width, y: y / p.r.height, w: w / p.r.width, h: h / p.r.height }; impostaRitaglio(st.sel, true); });
   tela.addEventListener("pointerup", () => { start = null; $("btnRitaglia").disabled = !(st.sel && st.sel.w > 0.03 && st.sel.h > 0.03); });
 })();
 $("btnRitaglia").onclick = () => {
@@ -398,7 +414,66 @@ $("btnRitaglia").onclick = () => {
   st.crop = { x: Math.round(bx + st.sel.x * bw), y: Math.round(by + st.sel.y * bh), w: Math.round(st.sel.w * bw), h: Math.round(st.sel.h * bh) };
   st.sketch = st.seg = st.res = null; preparaBase(); log("Ritaglio applicato."); avviaDopoFoto();
 };
-$("btnAnnullaRit").onclick = () => { st.crop = null; preparaBase(); };
+$("btnAnnullaRit").onclick = () => { st.crop = null; preparaBase(); log("Immagine intera ripristinata."); avviaDopoFoto(); };
+// cursori del ritaglio (in % dell'immagine attuale) <-> rettangolo sul quadro
+function mostraSelezione() {
+  const s = $("selezione"), cv = $("cvOrig"); if (!cv || !st.sel) { s.style.display = "none"; return; }
+  const r = cv.getBoundingClientRect(), tr = $("telaOrig").getBoundingClientRect();
+  Object.assign(s.style, { display: "block", left: r.left - tr.left + st.sel.x * r.width + "px", top: r.top - tr.top + st.sel.y * r.height + "px", width: st.sel.w * r.width + "px", height: st.sel.h * r.height + "px" });
+}
+function impostaRitaglio(sel, daTrascinamento) {
+  const v = sel || { x: 0, y: 0, w: 1, h: 1 }, put = (id, x) => { $(id).value = Math.round(x * 1000) / 10; $(id + "Out").textContent = $(id).value; };
+  put("ritX", v.x); put("ritY", v.y); put("ritW", v.w); put("ritH", v.h);
+  if (!daTrascinamento) { st.sel = sel; mostraSelezione(); }
+}
+["ritX", "ritY", "ritW", "ritH"].forEach((id) => $(id).addEventListener("input", () => {
+  if (!$("cvOrig")) return;
+  let x = Number($("ritX").value) / 100, y = Number($("ritY").value) / 100, w = Number($("ritW").value) / 100, h = Number($("ritH").value) / 100;
+  w = Math.min(w, 1 - x); h = Math.min(h, 1 - y);
+  st.sel = { x, y, w, h }; mostraSelezione();
+  $("btnRitaglia").disabled = !(w > 0.03 && h > 0.03) || (x === 0 && y === 0 && w >= 0.999 && h >= 0.999);
+}));
+window.addEventListener("resize", mostraSelezione);
+$("formato").addEventListener("change", () => { salva("formato", $("formato").value); if (!st.img) return; st.sketch = st.seg = st.res = null; preparaBase(); log(`Formato ${$("formato").value === "auto" ? "automatico" : $("formato").value}.`); avviaDopoFoto(); });
+{ const f = leggi("formato"); if (f) $("formato").value = f; }
+
+// ⚡ cornice automatica: bordi uniformi (passepartout) e linee dritte forti vicino ai lati (la cornice)
+function trovaCornice(img) {
+  const k = Math.min(1, 500 / Math.max(img.width, img.height)), w = Math.round(img.width * k), h = Math.round(img.height * k);
+  const d = canvasDa(img, w, h).getContext("2d").getImageData(0, 0, w, h).data, Y = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) Y[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+  // forza di un bordo verticale alla colonna x (quante righe hanno un salto netto) e orizzontale alla riga y
+  // solo la fascia centrale (20–80%): così la cornice degli altri lati non disturba
+  const ya = Math.round(h * 0.2), yb = Math.round(h * 0.8), xa = Math.round(w * 0.2), xb = Math.round(w * 0.8);
+  const col = (x) => { let n = 0; for (let y = ya; y < yb; y++) if (Math.abs(Y[y * w + x] - Y[y * w + x - 1]) > 22) n++; return n / (yb - ya); };
+  const riga = (y) => { let n = 0; for (let x = xa; x < xb; x++) if (Math.abs(Y[y * w + x] - Y[(y - 1) * w + x]) > 22) n++; return n / (xb - xa); };
+  const uniforme = (vals) => { let m = 0; for (const v of vals) m += v; m /= vals.length; let q = 0; for (const v of vals) q += (v - m) ** 2; return Math.sqrt(q / vals.length) < 6; };
+  const colVals = (x) => Array.from({ length: yb - ya }, (_, k) => Y[(ya + k) * w + x]), rigaVals = (y) => Array.from({ length: xb - xa }, (_, k) => Y[y * w + xa + k]);
+  const lato = (n, forza, vals) => { // dal bordo verso l'interno (max 25%): cornice e passe-partout, al massimo 2 strati
+    const lim = n * 0.25, passo = Math.max(2, Math.round(n * 0.02)); let pos = 0, linea = false;
+    for (let giro = 0; giro < 2 && pos < lim; giro++) {
+      const da = pos; while (pos < lim && uniforme(vals(pos))) pos++;
+      if (giro > 0 && pos - da < n * 0.01) { pos = da; break; }   // il secondo strato deve essere un bordo uniforme vero
+      let e = -1; for (let i = Math.max(1, pos); i < Math.min(lim, pos + passo); i++) if (forza(i) > 0.45) { e = i; break; }
+      if (e < 0) { if (giro > 0) pos = da; break; }
+      while (e + 1 < lim && forza(e + 1) > 0.45) e++;   // la linea può essere spessa qualche pixel
+      pos = e + 1; linea = true;
+    }
+    return pos + (linea ? Math.max(1, Math.round(n * 0.004)) : 0);
+  };
+  const x0 = lato(w, col, colVals), y0 = lato(h, riga, rigaVals);
+  const x1 = w - 1 - lato(w, (i) => col(w - i), (i) => colVals(w - 1 - i)), y1 = h - 1 - lato(h, (i) => riga(h - i), (i) => rigaVals(h - 1 - i));
+  if (x0 < w * 0.02 && y0 < h * 0.02 && x1 > w * 0.98 && y1 > h * 0.98) return null; // niente da togliere (meno del 2% per lato)
+  if (x1 - x0 < w * 0.4 || y1 - y0 < h * 0.4) return null;
+  return { x: Math.round(x0 / k), y: Math.round(y0 / k), w: Math.round((x1 - x0) / k), h: Math.round((y1 - y0) / k) };
+}
+$("btnAutoCornice").onclick = () => {
+  if (!st.img) return;
+  const c = trovaCornice(st.img);
+  if (!c) return log("Nessuna cornice o bordo da togliere trovato.", "ok");
+  st.crop = c; st.sketch = st.seg = st.res = null; preparaBase();
+  log(`Cornice tolta: ritaglio ${c.w}×${c.h} px (da ${c.x}, ${c.y}).`, "ok"); avviaDopoFoto();
+};
 
 // ---------- Gemini ----------
 function estraiImmagine(obj) {
@@ -453,8 +528,42 @@ async function generaSketch() {
 function mostraVarianti() { const box = $("varianti"); box.innerHTML = ""; if (!st.variantiSketch || st.variantiSketch.length < 2) return;
   st.variantiSketch.forEach((im, i) => { const t = document.createElement("img"); t.src = im.src; t.title = "Variante " + (i + 1); if (im === st.sketch) t.className = "sel";
     t.onclick = async () => { await scegliSketch(im); box.querySelectorAll("img").forEach((x) => (x.className = x === t ? "sel" : "")); }; box.appendChild(t); }); }
-async function scegliSketch(im) { st.sketch = im; mostra("telaSketch", canvasDa(im)); st.res = null; disegnaOverlay(); await allineaAuto(); await segmentaLocale(); }
+async function scegliSketch(im) { const v = st.variantiSketch || []; $("infoSketch").textContent = (v.length > 1 ? `variante ${v.indexOf(im) + 1} di ${v.length} · ` : "") + `${$("modello").selectedOptions[0].text.replace(/ \(.*\)/, "")} · ${$("risoluzione").value} · formato ${st.ratio} · ${im.width}×${im.height}`; st.sketch = im; mostra("telaSketch", canvasDa(im)); st.res = null; disegnaOverlay(); await allineaAuto(); await segmentaLocale(); }
 $("btnSketch").onclick = generaSketch;
+$("nVarianti").addEventListener("input", () => salva("nVarianti", $("nVarianti").value));
+// ⚡ sketch migliore: più varianti in parallelo, poi Gemini sceglie la più fedele (riserva: misura locale di corrispondenza)
+const PROMPT_SCEGLI_SKETCH = (n) => `Image 1 is an original artwork. Images 2 to ${n + 1} are ${n} line-art coloring pages traced from it (options ${"ABCD".slice(0, n).split("").join(", ")}). Choose the best one for a paint-by-numbers game: most faithful to the original (same composition, face and expression recognizable, hands, hair and folds correct), clean continuous lines, closed shapes, nothing invented or missing. Answer ONLY with JSON: {"best":"A","reason":"one short sentence in Italian"}.`;
+function corrispondenza(img) { return new Promise((ok) => { // quanto le linee coincidono con i contorni dell'originale (0..1)
+  const s = Math.min(1, 900 / Math.max(img.width, img.height)), W = Math.round(img.width * s), H = Math.round(img.height * s);
+  const sk = canvasDa(img, W, H).getContext("2d").getImageData(0, 0, W, H).data, orig = canvasDa(st.base, W, H).getContext("2d").getImageData(0, 0, W, H).data;
+  const wk = new Worker("colora-worker.js"); wk.onmessage = (e) => { if (e.data.tipo === "progresso") return; wk.terminate(); ok(e.data.tipo === "allineato" ? e.data.res.qualita : -1); };
+  wk.postMessage({ azione: "allinea", sk, orig, W, H }, [sk.buffer, orig.buffer]); }); }
+$("btnAutoSketch").onclick = async () => {
+  if (!st.base) return;
+  const n = Math.max(3, Number($("nVarianti").value)), b64 = aJpegB64(st.base), t0 = Date.now();
+  lavoro("telaSketch", true); $("caricaSketch").textContent = `Gemini disegna ${n} varianti… (20–60 s)`; $("varianti").innerHTML = "";
+  log(`Sketch migliore: ${n} varianti in parallelo (${$("modello").value}, ${st.ratio}, ${$("risoluzione").value})…`);
+  try {
+    const ris = await Promise.allSettled(Array.from({ length: n }, () => chiamaGemini($("p1").value, [b64])));
+    const ok = []; for (const r of ris) { if (r.status === "fulfilled") ok.push(await caricaImg(r.value)); else log("Sketch — errore: " + r.reason.message, "err"); }
+    if (!ok.length) return;
+    let k = 0, motivo = "unica riuscita";
+    if (ok.length > 1) {
+      $("caricaSketch").textContent = "Gemini confronta le varianti con l'originale…";
+      try {
+        const j = await chiamaGeminiTesto(PROMPT_SCEGLI_SKETCH(ok.length), [aJpegB64(st.base, 768), ...ok.map((im) => aJpegB64(canvasDa(im), 768))]);
+        const i = "ABCD".indexOf(String(j.best || "").trim().toUpperCase().charAt(0)); if (i >= 0 && i < ok.length) { k = i; motivo = "scelta da Gemini" + (j.reason ? ": " + j.reason : ""); } else throw new Error("risposta non valida");
+      } catch (e) {
+        $("caricaSketch").textContent = "Misuro quale coincide meglio con l'originale…";
+        const q = []; for (const im of ok) q.push(await corrispondenza(im)); k = q.indexOf(Math.max(...q)); motivo = "quella che coincide meglio con l'originale";
+      }
+    }
+    st.variantiSketch = ok; lavoro("telaSketch", false); mostraVarianti();
+    log(`Sketch migliore: variante ${k + 1} di ${ok.length} — ${motivo} (${Math.round((Date.now() - t0) / 1000)} s). Le altre restano nelle miniature.`, "ok");
+    await scegliSketch(ok[k]); $("varianti").querySelectorAll("img").forEach((x, i) => (x.className = i === k ? "sel" : ""));
+    if ($("autoSalva").checked) salvaGalleria(true);
+  } finally { lavoro("telaSketch", false); $("caricaSketch").textContent = "Gemini sta disegnando… (20–60 s)"; }
+};
 $("btnSeg").onclick = () => {
   const usa = $("segConSketch").checked && st.sketch;
   const imgs = [aJpegB64(st.base)]; if (usa) imgs.push(aJpegB64(canvasDa(st.sketch)));
@@ -609,7 +718,7 @@ document.querySelectorAll(".num[data-per]").forEach((n) => {
   n.addEventListener("keydown", (e) => { if (e.key === "Enter") n.blur(); });
 });
 // i valori cambiati dal programma (consigliati, auto, Gemini) aggiornano anche le caselle
-new MutationObserver(sincronizzaNumeri).observe(document.querySelector(".pannelli"), { subtree: true, childList: true, characterData: true });
+document.querySelectorAll(".pannelli").forEach((el) => new MutationObserver(sincronizzaNumeri).observe(el, { subtree: true, childList: true, characterData: true }));
 
 // ---------- impostazioni migliori in automatico ----------
 const PROMPT_SCEGLI = `Image 1 is the original artwork. Images 2, 3 and 4 are three paint-by-numbers versions (A, B, C) of it: every piece is filled with one real color of the original, black lines are the sketch. Choose the version that is most faithful to the original (face features, eyes, lips, hair shapes, light and shadow) while having clean, well-shaped pieces that are pleasant to color on a phone. Answer ONLY with JSON: {"best":"A","reason":"one short sentence in Italian"} where best is A, B or C.`;
@@ -1177,6 +1286,7 @@ $("btnCheck").onclick = async () => { salva("pw", $("pw").value);
 ["modello", "risoluzione", "soglia", "chiusura", "minArea", "toni", "vista", "stilePagina", "lineeToni", "gap", "tavolozza", "nVarianti"].forEach((id) => { const v = leggi(id); if (v) $(id).value = v; if (id === "modello" || id === "risoluzione") $(id).onchange = () => salva(id, $(id).value); });
 { const k = leggi("k"); if (k) { $("kNum").value = k; $("kRange").value = k; } }
 $("pw").value = leggi("pw") || leggi("pwAI") || "";
+sincronizzaNumeri();
 try { if (!$("pw").value) $("pw").value = localStorage.getItem("pw") || ""; } catch (e) {}
 etichette(); disegnaOverlay(); disegnaMia(); disegnaGalleria();
 log("Pronto. 1) carica l'opera  2) genera o carica lo sketch  3) Rileva colori.");
