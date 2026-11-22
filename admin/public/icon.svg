@@ -1,8 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#ff7a59"/>
-  <path d="M256 96c-88 0-160 64-160 148 0 70 52 108 104 108 22 0 30 14 30 30 0 28 12 34 26 34 88 0 160-72 160-160S344 96 256 96z" fill="#fff8f1"/>
-  <circle cx="180" cy="230" r="26" fill="#3cb4a4"/>
-  <circle cx="236" cy="168" r="26" fill="#f6c343"/>
-  <circle cx="314" cy="176" r="26" fill="#7b6cf6"/>
-  <circle cx="352" cy="248" r="26" fill="#ff7a59"/>
+  <rect width="512" height="512" rx="112" fill="#1d1b18"/>
+  <!-- calendario delle uscite -->
+  <rect x="104" y="128" width="304" height="268" rx="22" fill="#f6f1e7"/>
+  <path d="M104 150a22 22 0 0 1 22-22h260a22 22 0 0 1 22 22v44H104z" fill="#b4462f"/>
+  <rect x="166" y="100" width="22" height="58" rx="11" fill="#f6f1e7"/>
+  <rect x="324" y="100" width="22" height="58" rx="11" fill="#f6f1e7"/>
+  <g fill="#cfc3ad">
+    <rect x="136" y="222" width="44" height="40" rx="8"/><rect x="194" y="222" width="44" height="40" rx="8"/><rect x="252" y="222" width="44" height="40" rx="8"/><rect x="310" y="222" width="44" height="40" rx="8"/>
+    <rect x="136" y="276" width="44" height="40" rx="8"/><rect x="252" y="276" width="44" height="40" rx="8"/><rect x="310" y="276" width="44" height="40" rx="8"/>
+    <rect x="136" y="330" width="44" height="40" rx="8"/><rect x="194" y="330" width="44" height="40" rx="8"/><rect x="252" y="330" width="44" height="40" rx="8"/>
+  </g>
+  <rect x="194" y="276" width="44" height="40" rx="8" fill="#2f5d62"/>
+  <path d="M206 296l8 8 14-16" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="332" cy="350" r="22" fill="#ff7a59"/>
 </svg>
